@@ -6,6 +6,7 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -19,11 +20,11 @@ public class GrandTeleTest extends LinearOpMode{
     private Follower follower;
 
     private final Pose startPose = new Pose(0, 0, 0);
-    private DcMotorEx frontRight, frontLeft, backRight, backLeft, intake, turret1, turret2;
-    Servo turnTurret, angleTurret0, angleTurret1, transferR, transferL;
+    private DcMotorEx frontRight, frontLeft, backRight, backLeft, intake, turret;
+    Servo turnTurret, angleTurret0, angleTurret1, popUp;
+    CRServo upperTransferL, upperTransferR, lowerTransferL, lowerTransferR;
     public static double turnTurretLowerBound = 0;
     public static double turnTurretUpperBound = 0.8;
-    boolean halfSpeed;
     public ElapsedTime runtime = new ElapsedTime();
     boolean b2Last;
     double drivePower;
@@ -50,7 +51,6 @@ public class GrandTeleTest extends LinearOpMode{
     @Override
     public void runOpMode() throws InterruptedException {
 
-        halfSpeed = false;
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRight = hardwareMap.get(DcMotorEx.class, "rightRear");
@@ -74,12 +74,10 @@ public class GrandTeleTest extends LinearOpMode{
         } else {
             telemetry.addData("LL", "not found");
         }
-        turret1 = hardwareMap.get(DcMotorEx.class, "turret1");
-        turret1.setDirection(DcMotorSimple.Direction.REVERSE);
-        turret1.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        turret2 = hardwareMap.get(DcMotorEx.class, "turret2");
-        turret2.setDirection(DcMotorSimple.Direction.REVERSE);
-        turret2.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        turret = hardwareMap.get(DcMotorEx.class, "turret1");
+        turret.setDirection(DcMotorSimple.Direction.REVERSE);
+        turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
         //turnTurret = hardwareMap.get(Servo.class, "turnTurret");
         //turnTurret.scaleRange(turnTurretLowerBound, turnTurretUpperBound);
         //turnTurret.setPosition(0.75);
@@ -88,10 +86,11 @@ public class GrandTeleTest extends LinearOpMode{
         angleTurret0.setPosition(0.2);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
         angleTurret1.setPosition(0.8);
-        transferR=hardwareMap.get(Servo.class, "transferR");
-        transferL=hardwareMap.get(Servo.class, "transferL");
-        transferR.setPosition(pos2);
-        transferL.setPosition(pos1);
+        upperTransferL=hardwareMap.get(CRServo.class, "upperTransferL");
+        upperTransferR=hardwareMap.get(CRServo.class, "upperTransferR");
+        lowerTransferL=hardwareMap.get(CRServo.class, "lowerTransferL");
+        lowerTransferR=hardwareMap.get(CRServo.class, "lowerTransferR");
+        popUp=hardwareMap.get(Servo.class, "popUp");
 
         intake = hardwareMap.get(DcMotorEx.class, "intake");
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -162,15 +161,17 @@ public class GrandTeleTest extends LinearOpMode{
                 rbumpPressable = !rbumpPressable;
             }
             if (rbumpPressable) {
+                upperTransferL.setPower(1);
+                upperTransferR.setPower(1);
+                lowerTransferL.setPower(1);
+                lowerTransferR.setPower(1);
 
-
-                transferR.setPosition(0.99);
-                transferL.setPosition(0.1);
             }
             else {
-
-                transferR.setPosition(pos2);
-                transferL.setPosition(pos1);
+                upperTransferL.setPower(0);
+                upperTransferR.setPower(0);
+                lowerTransferL.setPower(0);
+                lowerTransferR.setPower(0);
             }
             rbumpLast = gamepad1.right_bumper;
 
@@ -180,14 +181,14 @@ public class GrandTeleTest extends LinearOpMode{
             if (aPressable) {
 
 
-                turret1.setPower(1);
-                turret2.setPower(1);
-                telemetry.addData("Turret Power", turret1.getPower());
+                turret.setPower(1);
+
+                telemetry.addData("Turret Power", turret.getPower());
             }
             else {
 
-                turret1.setPower(0);
-                turret2.setPower(0);
+                turret.setPower(0);
+
             }
             aLast = gamepad1.a;
 
