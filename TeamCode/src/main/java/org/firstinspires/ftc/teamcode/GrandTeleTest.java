@@ -30,6 +30,10 @@ public class GrandTeleTest extends LinearOpMode{
     double drivePower;
     public static double pos1=0.174;//smaller numbers make it go up
     public static double pos2= 0.95;
+    boolean popSequenceActive = false;
+    boolean popSequenceComplete = true;
+    long sequenceStartTime = 0;
+    int popSequenceStep = 0;
 
     // Aim-assist button/state
     boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, lbumpLast, lbumpPressable;
@@ -91,7 +95,7 @@ public class GrandTeleTest extends LinearOpMode{
         lowerTransferL=hardwareMap.get(CRServo.class, "lowerTransferL");
         lowerTransferR=hardwareMap.get(CRServo.class, "lowerTransferR");
         popUp=hardwareMap.get(Servo.class, "popUp");
-        popUp.setPosition(0.03);
+        popUp.setPosition(0.14);
 
         intake = hardwareMap.get(DcMotorEx.class, "intake");
         intake.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -139,9 +143,9 @@ public class GrandTeleTest extends LinearOpMode{
             }
 
             else if (gamepad1.dpad_left) {
-                angleTurret0.setPosition(0.25);
+                angleTurret0.setPosition(0.28);
                 telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
-                angleTurret1.setPosition(0.75);
+                angleTurret1.setPosition(0.72);
                 telemetry.addData("Servo Position (2): ", angleTurret1.getPosition());
                 telemetry.update();
             }
@@ -154,7 +158,6 @@ public class GrandTeleTest extends LinearOpMode{
                 upperTransferR.setPower(-1);
                 lowerTransferL.setPower(1);
                 lowerTransferR.setPower(-1);
-
             }
             else {
                 upperTransferL.setPower(0);
@@ -164,37 +167,43 @@ public class GrandTeleTest extends LinearOpMode{
             }
             rbumpLast = gamepad1.right_bumper;
 
-            if (gamepad1.left_bumper && !lbumpLast)
-            {
-                lbumpPressable=!lbumpPressable;
+            if (gamepad1.left_bumper && !popSequenceActive) {
+                popSequenceActive = true;
+                popSequenceComplete = false;
+                sequenceStartTime = System.currentTimeMillis();
             }
-            if (lbumpPressable)
-            {
-                popUp.setPosition(0);
+
+            if (popSequenceActive && !popSequenceComplete) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                switch (popSequenceStep) {
+                    case 0:
+                        popUp.setPosition(0.105);
+                        if (elapsedTime >= 500) {
+                            popSequenceStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        popUp.setPosition(0.14);
+                        popSequenceComplete = true;
+                        popSequenceActive = false;
+                        sequenceStartTime = 0;
+                        popSequenceStep = 0;
+                        break;
+                }
             }
-            else {
-                popUp.setPosition(0.03);
-            }
-            lbumpLast = gamepad1.left_bumper;
 
             if (gamepad1.a && !aLast) {
                 aPressable = !aPressable;
             }
             if (aPressable) {
-
-
                 turret.setPower(1);
-
                 telemetry.addData("Turret Power", turret.getPower());
             }
             else {
-
                 turret.setPower(0);
-
             }
             aLast = gamepad1.a;
-
-
 
             telemetry.update();
 
@@ -245,8 +254,6 @@ public class GrandTeleTest extends LinearOpMode{
             // Update edge trackers
             xLast = xPressed;
             bLast = bPressed;
-
-
 
             telemetry.addData("X", follower.getPose().getX());
             telemetry.addData("Y", follower.getPose().getY());
@@ -394,7 +401,6 @@ public class GrandTeleTest extends LinearOpMode{
                     }
                 }
             }
-
             // Drive with (possibly) overridden rx
             double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
             double leftFrontPower = (y + x + rx) / denominator;
@@ -406,10 +412,6 @@ public class GrandTeleTest extends LinearOpMode{
             backLeft.setPower(leftRearPower);
             frontRight.setPower(rightFrontPower);
             backRight.setPower(rightRearPower);
-
-
-
-
         }
 
     }
