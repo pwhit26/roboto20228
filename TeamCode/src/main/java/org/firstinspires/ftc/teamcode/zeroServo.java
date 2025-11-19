@@ -10,38 +10,38 @@ public class zeroServo extends LinearOpMode {
     private Servo servo2;
     @Override
     public void runOpMode() throws InterruptedException {
-        servo1 = hardwareMap.get(Servo.class, "servo1");
+        servo1 = hardwareMap.get(Servo.class, "popUp");
         servo1.setPosition(0);
-        servo2 = hardwareMap.get(Servo.class, "servo2");
-        servo2.setPosition(1);
+        //servo2 = hardwareMap.get(Servo.class, "servo2");
+        //servo2.setPosition(1);
         waitForStart();
         while (opModeIsActive()) {
             if (gamepad1.a) {
                 servo1.setPosition(0.1);
                 telemetry.addData("Servo Position: ", servo1.getPosition());
-                servo2.setPosition(0.9);
-                telemetry.addData("Servo Position: ", servo2.getPosition());
+                //servo2.setPosition(0.9);
+                //telemetry.addData("Servo Position: ", servo2.getPosition());
                 telemetry.update();
             }
             if (gamepad1.x) {
                 servo1.setPosition(0.2);
                 telemetry.addData("Servo Position: ", servo1.getPosition());
-                servo2.setPosition(0.8);
-                telemetry.addData("Servo Position: ", servo2.getPosition());
+                //servo2.setPosition(0.8);
+                //telemetry.addData("Servo Position: ", servo2.getPosition());
                 telemetry.update();
             }
             if (gamepad1.y) {
                 servo1.setPosition(0.25);
                 telemetry.addData("Servo Position: ", servo1.getPosition());
-                servo2.setPosition(0.75);
-                telemetry.addData("Servo Position: ", servo2.getPosition());
+                //servo2.setPosition(0.75);
+                //telemetry.addData("Servo Position: ", servo2.getPosition());
                 telemetry.update();
             }
             else if (gamepad1.b) {
                 servo1.setPosition(0);
                 telemetry.addData("Servo Position: ", servo1.getPosition());
-                servo2.setPosition(1);
-                telemetry.addData("Servo Position: ", servo2.getPosition());
+                //servo2.setPosition(1);
+                //telemetry.addData("Servo Position: ", servo2.getPosition());
                 telemetry.update();
             }
         }

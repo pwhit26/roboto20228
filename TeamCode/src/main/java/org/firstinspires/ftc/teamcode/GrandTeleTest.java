@@ -32,7 +32,7 @@ public class GrandTeleTest extends LinearOpMode{
     public static double pos2= 0.95;
 
     // Aim-assist button/state
-    boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable;
+    boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, lbumpLast, lbumpPressable;
 
     boolean aimActive = false;
     int aimSettleCount = 0;
@@ -52,14 +52,14 @@ public class GrandTeleTest extends LinearOpMode{
     public void runOpMode() throws InterruptedException {
 
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
-        frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backRight = hardwareMap.get(DcMotorEx.class, "rightRear");
-        backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        backRight = hardwareMap.get(DcMotorEx.class, "rightBack");
+        backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         frontLeft = hardwareMap.get(DcMotorEx.class, "leftFront");
-        frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        backLeft = hardwareMap.get(DcMotorEx.class, "leftRear");
-        backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
+        backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Follower after constants are set
         follower = Constants.createFollower(hardwareMap);
@@ -74,7 +74,7 @@ public class GrandTeleTest extends LinearOpMode{
         } else {
             telemetry.addData("LL", "not found");
         }
-        turret = hardwareMap.get(DcMotorEx.class, "turret1");
+        turret = hardwareMap.get(DcMotorEx.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.REVERSE);
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
@@ -83,17 +83,18 @@ public class GrandTeleTest extends LinearOpMode{
         //turnTurret.setPosition(0.75);
         //telemetry.addData("Turret Rotation Position", turnTurret.getPosition());
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.2);
+        angleTurret0.setPosition(0.25);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.8);
+        angleTurret1.setPosition(0.75);
         upperTransferL=hardwareMap.get(CRServo.class, "upperTransferL");
         upperTransferR=hardwareMap.get(CRServo.class, "upperTransferR");
         lowerTransferL=hardwareMap.get(CRServo.class, "lowerTransferL");
         lowerTransferR=hardwareMap.get(CRServo.class, "lowerTransferR");
         popUp=hardwareMap.get(Servo.class, "popUp");
+        popUp.setPosition(0.03);
 
         intake = hardwareMap.get(DcMotorEx.class, "intake");
-        intake.setDirection(DcMotorSimple.Direction.REVERSE);
+        intake.setDirection(DcMotorSimple.Direction.FORWARD);
         intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         yPressable = false;
         yLast = false;
@@ -119,7 +120,7 @@ public class GrandTeleTest extends LinearOpMode{
                 yPressable = !yPressable;
             }
             if (yPressable) {
-                intake.setPower(1);
+                intake.setPower(0.5);
                 telemetry.addData("Intake Power", intake.getPower());
             }
             else {
@@ -128,27 +129,15 @@ public class GrandTeleTest extends LinearOpMode{
             yLast = gamepad1.y;
 
             //TURRET CONTROLS
-            if (gamepad1.dpad_up) {
-                angleTurret0.setPosition(0);
-                telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
-                angleTurret1.setPosition(1);
-                telemetry.addData("Servo Position (1): ", angleTurret1.getPosition());
-                telemetry.update();
-            }
-            else if (gamepad1.dpad_right) {
+
+            if (gamepad1.dpad_right) {
                 angleTurret0.setPosition(0.1);
                 telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
                 angleTurret1.setPosition(0.9);
                 telemetry.addData("Servo Position (1): ", angleTurret1.getPosition());
                 telemetry.update();
             }
-            else if (gamepad1.dpad_down) {
-                angleTurret0.setPosition(0.2);
-                telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
-                angleTurret1.setPosition(0.8);
-                telemetry.addData("Servo Position (1): ", angleTurret1.getPosition());
-                telemetry.update();
-            }
+
             else if (gamepad1.dpad_left) {
                 angleTurret0.setPosition(0.25);
                 telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
@@ -162,9 +151,9 @@ public class GrandTeleTest extends LinearOpMode{
             }
             if (rbumpPressable) {
                 upperTransferL.setPower(1);
-                upperTransferR.setPower(1);
+                upperTransferR.setPower(-1);
                 lowerTransferL.setPower(1);
-                lowerTransferR.setPower(1);
+                lowerTransferR.setPower(-1);
 
             }
             else {
@@ -174,6 +163,19 @@ public class GrandTeleTest extends LinearOpMode{
                 lowerTransferR.setPower(0);
             }
             rbumpLast = gamepad1.right_bumper;
+
+            if (gamepad1.left_bumper && !lbumpLast)
+            {
+                lbumpPressable=!lbumpPressable;
+            }
+            if (lbumpPressable)
+            {
+                popUp.setPosition(0);
+            }
+            else {
+                popUp.setPosition(0.03);
+            }
+            lbumpLast = gamepad1.left_bumper;
 
             if (gamepad1.a && !aLast) {
                 aPressable = !aPressable;
