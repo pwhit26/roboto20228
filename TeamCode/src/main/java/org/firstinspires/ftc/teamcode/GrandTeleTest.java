@@ -108,9 +108,9 @@ public class GrandTeleTest extends LinearOpMode{
         while (opModeIsActive()) {
 //ALWAYS
             //drive
-            double y = gamepad1.left_stick_y; // Remember, this is reversed!
-            double x = gamepad1.left_stick_x; // this is strafing
-            double rx = gamepad1.right_stick_x; // rotate
+            double y = gamepad2.left_stick_y; // Remember, this is reversed!
+            double x = gamepad2.left_stick_x; // this is strafing
+            double rx = gamepad2.right_stick_x; // rotate
             boolean aimAssist = false;
 
             // Handle X/B edge presses every loop (even if no valid LL result)
@@ -177,7 +177,7 @@ public class GrandTeleTest extends LinearOpMode{
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 switch (popSequenceStep) {
                     case 0:
-                        popUp.setPosition(0.105);
+                        popUp.setPosition(0.09);
                         if (elapsedTime >= 500) {
                             popSequenceStep++;
                             sequenceStartTime = System.currentTimeMillis();
