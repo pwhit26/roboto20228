@@ -106,7 +106,7 @@ public class GrandTeleTest extends LinearOpMode{
         follower.startTeleopDrive();
         runtime.reset();
         while (opModeIsActive()) {
-//ALWAYS
+//ALWAYSSS
             //drive
             double y = gamepad2.left_stick_y; // Remember, this is reversed!
             double x = gamepad2.left_stick_x; // this is strafing
