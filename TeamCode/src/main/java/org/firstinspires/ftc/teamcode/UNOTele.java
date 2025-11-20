@@ -177,7 +177,7 @@ public class UNOTele extends LinearOpMode{
                     long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                     switch (popSequenceStep) {
                         case 0:
-                            popUp.setPosition(0.09);
+                            popUp.setPosition(0.105);
                             if (elapsedTime >= 500) {
                                 popSequenceStep++;
                                 sequenceStartTime = System.currentTimeMillis();
