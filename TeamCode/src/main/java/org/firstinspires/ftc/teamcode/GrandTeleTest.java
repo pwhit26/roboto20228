@@ -20,7 +20,7 @@ public class GrandTeleTest extends LinearOpMode{
     private Follower follower;
 
     private final Pose startPose = new Pose(0, 0, 0);
-    private DcMotorEx frontRight, frontLeft, backRight, backLeft, intake, turret;
+    private DcMotorEx frontRight, frontLeft, backRight, backLeft, intake, turret, hi;
     Servo turnTurret, angleTurret0, angleTurret1, popUp;
     CRServo upperTransferL, upperTransferR, lowerTransferL, lowerTransferR;
     public static double turnTurretLowerBound = 0;
