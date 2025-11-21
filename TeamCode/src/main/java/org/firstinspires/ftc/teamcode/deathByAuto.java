@@ -14,10 +14,10 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 @Autonomous(name = "Death By Auto")
 public class deathByAuto extends OpMode {
     private Follower follower;
-    private Pose start, shoot, end;
+    private Pose start, shoot, end, hi;
     private PathChain[] paths;
     String pathState="";
-    private int pathStage = 0; // 0 = not started,    1 = first path, 2 = second path, 3 = done
+    private int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
     
     // Drive motors
     private DcMotorEx frontRight, frontLeft, backRight, backLeft;
