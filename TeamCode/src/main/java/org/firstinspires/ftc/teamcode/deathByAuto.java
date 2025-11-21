@@ -17,7 +17,7 @@ public class deathByAuto extends OpMode {
     private Pose start, shoot, end;
     private PathChain[] paths;
     String pathState="";
-    private int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
+    private int pathStage = 0; // 0 = not started,    1 = first path, 2 = second path, 3 = done
     
     // Drive motors
     private DcMotorEx frontRight, frontLeft, backRight, backLeft;
