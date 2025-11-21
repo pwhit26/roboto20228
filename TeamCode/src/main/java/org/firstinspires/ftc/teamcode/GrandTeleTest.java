@@ -36,7 +36,7 @@ public class GrandTeleTest extends LinearOpMode{
     int popSequenceStep = 0;
 
     // Aim-assist button/state
-    boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, lbumpLast, lbumpPressable;
+    boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
 
     boolean aimActive = false;
     int aimSettleCount = 0;
@@ -57,14 +57,14 @@ public class GrandTeleTest extends LinearOpMode{
 
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight = hardwareMap.get(DcMotorEx.class, "rightBack");
         backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         frontLeft = hardwareMap.get(DcMotorEx.class, "leftFront");
         frontLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Follower after constants are set
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startPose);
@@ -108,19 +108,19 @@ public class GrandTeleTest extends LinearOpMode{
         while (opModeIsActive()) {
 //ALWAYS
             //drive
-            double y = gamepad1.left_stick_y; // Remember, this is reversed!
-            double x = gamepad1.left_stick_x; // this is strafing
-            double rx = -gamepad1.right_stick_x; // rotate (inverted)
+            double y = -gamepad2.left_stick_y; // Remember, this is reversed!
+            double x = -gamepad2.left_stick_x; // this is strafing
+            double rx = gamepad2.right_stick_x; // rotate (inverted)
             boolean aimAssist = false;
 
             // Handle X/B edge presses every loop (even if no valid LL result)
-            boolean xPressed = gamepad1.x;
-            boolean bPressed = gamepad1.b;
-            boolean yPressed = gamepad1.y;
+            boolean xPressed = gamepad2.x;
+            boolean bPressed = gamepad2.b;
+            boolean yPressed = gamepad2.y;
             boolean xEdge = xPressed && !xLast;
             boolean bEdge = bPressed && !bLast;
 
-            if (yPressed && !yLast) {
+            if (gamepad1.y && !yLast) {
                 yPressable = !yPressable;
             }
             if (yPressable) {
@@ -166,6 +166,33 @@ public class GrandTeleTest extends LinearOpMode{
                 lowerTransferR.setPower(0);
             }
             rbumpLast = gamepad1.right_bumper;
+
+            if (gamepad1.b && !b1Last) {
+                b1Pressable = !b1Pressable;
+            }
+            if (b1Pressable) {
+                lowerTransferL.setPower(1);
+                lowerTransferR.setPower(-1);
+            }
+            else {
+                lowerTransferL.setPower(0);
+                lowerTransferR.setPower(0);
+            }
+
+            b1Last = gamepad1.b;
+
+            if (gamepad1.x && !x1Last) {
+                x1Pressable = !x1Pressable;
+            }
+            if (x1Pressable) {
+                upperTransferL.setPower(1);
+                upperTransferR.setPower(-1);
+            }
+            else {
+                upperTransferL.setPower(0);
+                upperTransferR.setPower(0);
+            }
+            x1Last = gamepad1.x;
 
             if (gamepad1.left_bumper && !popSequenceActive) {
                 popSequenceActive = true;
@@ -403,10 +430,11 @@ public class GrandTeleTest extends LinearOpMode{
             }
             // Drive with (possibly) overridden rx
             double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
-            double leftFrontPower = (y + x + rx) / denominator;
-            double leftRearPower = (y - x + rx) / denominator;
-            double rightFrontPower = (y - x - rx) / denominator;
-            double rightRearPower = (y + x - rx) / denominator;
+            // Note: x is negated to reverse the strafing direction
+            double leftFrontPower = (y - x + rx) / denominator;
+            double leftRearPower = (y + x + rx) / denominator;
+            double rightFrontPower = (y + x - rx) / denominator;
+            double rightRearPower = (y - x - rx) / denominator;
 
             frontLeft.setPower(leftFrontPower);
             backLeft.setPower(leftRearPower);

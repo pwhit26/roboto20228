@@ -883,7 +883,7 @@ class DriveTuner extends OpMode {
     public void init_loop() {
         telemetryM.debug("This will run the robot in a straight line going " + DISTANCE + "inches forward.");
         telemetryM.debug("The robot will go forward and backward continuously along the path.");
-        telemetryM.debug("Make sure you have enough room.");
+        telemetryM.debug("Ma ke sure you have enough room.");
         telemetryM.update(telemetry);
         follower.update();
         drawCurrent();
@@ -1242,7 +1242,7 @@ class Drawing {
         panelsField.moveCursor(pose.getX(), pose.getY());
         panelsField.circle(ROBOT_RADIUS);
 
-        Vector v = pose.getHeadingAsUnitVector();
+        Vector v = new Vector(1.0, pose.getHeading() + Math.PI);
         v.setMagnitude(v.getMagnitude() * ROBOT_RADIUS);
         double x1 = pose.getX() + v.getXComponent() / 2, y1 = pose.getY() + v.getYComponent() / 2;
         double x2 = pose.getX() + v.getXComponent(), y2 = pose.getY() + v.getYComponent();
