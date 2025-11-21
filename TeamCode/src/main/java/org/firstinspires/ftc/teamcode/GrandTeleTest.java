@@ -87,9 +87,9 @@ public class GrandTeleTest extends LinearOpMode{
         //turnTurret.setPosition(0.75);
         //telemetry.addData("Turret Rotation Position", turnTurret.getPosition());
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.25);
+        angleTurret0.setPosition(0.135);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.75);
+        angleTurret1.setPosition(0.865);
         upperTransferL=hardwareMap.get(CRServo.class, "upperTransferL");
         upperTransferR=hardwareMap.get(CRServo.class, "upperTransferR");
         lowerTransferL=hardwareMap.get(CRServo.class, "lowerTransferL");
@@ -106,11 +106,11 @@ public class GrandTeleTest extends LinearOpMode{
         follower.startTeleopDrive();
         runtime.reset();
         while (opModeIsActive()) {
-//ALWAYSSS
+//ALWAYS
             //drive
-            double y = gamepad2.left_stick_y; // Remember, this is reversed!
-            double x = gamepad2.left_stick_x; // this is strafing
-            double rx = gamepad2.right_stick_x; // rotate
+            double y = gamepad1.left_stick_y; // Remember, this is reversed!
+            double x = gamepad1.left_stick_x; // this is strafing
+            double rx = -gamepad1.right_stick_x; // rotate (inverted)
             boolean aimAssist = false;
 
             // Handle X/B edge presses every loop (even if no valid LL result)
@@ -134,18 +134,18 @@ public class GrandTeleTest extends LinearOpMode{
 
             //TURRET CONTROLS
 
-            if (gamepad1.dpad_right) {
-                angleTurret0.setPosition(0.1);
+            if (gamepad1.dpad_down) {
+                angleTurret0.setPosition(0.135);
                 telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
-                angleTurret1.setPosition(0.9);
+                angleTurret1.setPosition(0.865);
                 telemetry.addData("Servo Position (1): ", angleTurret1.getPosition());
                 telemetry.update();
             }
 
-            else if (gamepad1.dpad_left) {
-                angleTurret0.setPosition(0.28);
+            else if (gamepad1.dpad_up) {
+                angleTurret0.setPosition(0.09);
                 telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
-                angleTurret1.setPosition(0.72);
+                angleTurret1.setPosition(0.91);
                 telemetry.addData("Servo Position (2): ", angleTurret1.getPosition());
                 telemetry.update();
             }
@@ -177,7 +177,7 @@ public class GrandTeleTest extends LinearOpMode{
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 switch (popSequenceStep) {
                     case 0:
-                        popUp.setPosition(0.09);
+                        popUp.setPosition(0.105);
                         if (elapsedTime >= 500) {
                             popSequenceStep++;
                             sequenceStartTime = System.currentTimeMillis();
@@ -346,7 +346,7 @@ public class GrandTeleTest extends LinearOpMode{
                             double rxAuto;
                             double epsDriveDeg = 1.0;
                             if (Math.abs(txDeg) > epsDriveDeg) {
-                                rxAuto = kP * txDeg;
+                                rxAuto = -kP * txDeg;  // Changed to negative to reverse rotation direction
                                 if (Math.abs(rxAuto) < minPower) {
                                     rxAuto = Math.copySign(minPower, rxAuto);
                                 }
