@@ -6,59 +6,70 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Autonomous(name = "Death By Auto")
 public class deathByAuto extends OpMode {
     private Follower follower;
-    private Pose start, shoot, end, hi;
-    private PathChain[] paths;
+    private Pose start, shoot, shoot2;
+    private PathChain paths, side;
     String pathState="";
-    private int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
+    long startTime = 0;
+    int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
+    public ElapsedTime runtime = new ElapsedTime();
     
     // Drive motors
-    private DcMotorEx frontRight, frontLeft, backRight, backLeft;
+    private DcMotorEx frontRight, frontLeft, backRight, backLeft, turret;
+    private Servo angleTurret0, angleTurret1, popUp;
 
     @Override
     public void init() {
         // Initialize drive motors
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        //frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight = hardwareMap.get(DcMotorEx.class, "rightBack");
         backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        //backRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         frontLeft = hardwareMap.get(DcMotorEx.class, "leftFront");
         frontLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        //frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
+        angleTurret0.setPosition(0.135);
+        angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
+        angleTurret1.setPosition(0.865);
+        turret = hardwareMap.get(DcMotorEx.class, "turret");
+        turret.setDirection(DcMotorSimple.Direction.REVERSE);
+        turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        popUp=hardwareMap.get(Servo.class, "popUp");
+        popUp.setPosition(0.14);
+        //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
-        start = new Pose(22.1, 125.1, Math.toRadians(325));
-        shoot = new Pose(57.9, 86.3, Math.toRadians(180));
-        end = new Pose(15, 86.3, Math.toRadians(180));
-        
+        start = new Pose(0, 0, Math.toRadians(0));
+        shoot = new Pose(80, 0, Math.toRadians(0));
+        shoot2 = new Pose(80, 0, Math.toRadians(0));
         // Initialize follower
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(start);
         
         // Build paths
-        PathChain shootOne = follower.pathBuilder()
+        paths = follower.pathBuilder()
                 .addPath(new BezierLine(start, shoot))
                 .setLinearHeadingInterpolation(start.getHeading(), shoot.getHeading())
                 .build();
-                
-        PathChain grabBalls = follower.pathBuilder()
-                .addPath(new BezierLine(shoot, end))
-                .setLinearHeadingInterpolation(shoot.getHeading(), end.getHeading())
+        side = follower.pathBuilder()
+                .addPath(new BezierLine(shoot, shoot2))
+                .setLinearHeadingInterpolation(start.getHeading(), shoot.getHeading())
                 .build();
-        
-        // Store paths in an array for easier access
-        paths = new PathChain[]{shootOne, grabBalls};
+
         
         telemetry.addData("Status", "Initialized");
         telemetry.update();
@@ -72,33 +83,59 @@ public class deathByAuto extends OpMode {
 
     @Override
     public void loop() {
+        long elapsedTime = System.currentTimeMillis() - startTime;
         switch (pathStage) {
             case 0: // Start first path
-                follower.followPath(paths[0]);
-                pathStage = 1;
+                follower.followPath(paths);
+                if (elapsedTime >= 3500) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
                 telemetry.addData("Status", "Starting first path");
                 break;
                 
             case 1: // First path in progress
+
                 if (!follower.isBusy()) {
-                    // First path complete, start second path
-                    follower.followPath(paths[1]);
-                    pathStage = 2;
-                    telemetry.addData("Status", "Starting second path");
+                    follower.turnDegrees(22.5, false);
+                }
+                if (elapsedTime >= 4500) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("Status", "Starting second path");
+                break;
+
+            case 2:
+                if (!follower.isBusy()) {
+                    frontRight.setPower(0);
+                    frontLeft.setPower(0);
+                    backRight.setPower(0);
+                    backLeft.setPower(0);
+                    turret.setPower(1);
+                }
+                if (elapsedTime >= 5500) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
                 }
                 break;
-                
-            case 2: // Second path in progress
+            case 3: // Second path in progress
                 if (!follower.isBusy()) {
                     // Both paths complete
-                    pathStage = 3;
+                    frontRight.setPower(0);
+                    frontLeft.setPower(0);
+                    backRight.setPower(0);
+                    backLeft.setPower(0);
+                    popUp.setPosition(0.105);
                     telemetry.addData("Status", "All paths complete");
-                    // Stop the robot
-                    stopRobot();
+                }
+                if (elapsedTime >= 6000) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
                 }
                 break;
                 
-            case 3: // All paths complete
+            case 4: // All paths complete
                 // Robot is stopped, do nothing
                 return;
         }
@@ -111,17 +148,7 @@ public class deathByAuto extends OpMode {
         telemetry.addData("Current Pose", follower.getPose());
         telemetry.update();
     }
-    
-    private void stopRobot() {
-        // Stop all drive motors
-        frontLeft.setPower(0);
-        frontRight.setPower(0);
-        backLeft.setPower(0);
-        backRight.setPower(0);
-        
-        telemetry.addData("Status", "Robot stopped");
-        telemetry.update();
-    }
+
 
     /*public void autonomousPathUpdate()
     {
