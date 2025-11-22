@@ -158,6 +158,8 @@ public class GrandTeleTest extends LinearOpMode{
                 upperTransferR.setPower(-1);
                 lowerTransferL.setPower(1);
                 lowerTransferR.setPower(-1);
+                telemetry.addLine("BOTH transfers going");
+                telemetry.update();
             }
             else {
                 upperTransferL.setPower(0);
@@ -173,6 +175,8 @@ public class GrandTeleTest extends LinearOpMode{
             if (b1Pressable) {
                 lowerTransferL.setPower(1);
                 lowerTransferR.setPower(-1);
+                telemetry.addLine("LOWER transfer going");
+                telemetry.update();
             }
             else {
                 lowerTransferL.setPower(0);
@@ -187,6 +191,8 @@ public class GrandTeleTest extends LinearOpMode{
             if (x1Pressable) {
                 upperTransferL.setPower(1);
                 upperTransferR.setPower(-1);
+                telemetry.addLine("UPPER transfer going");
+                telemetry.update();
             }
             else {
                 upperTransferL.setPower(0);
