@@ -9,7 +9,6 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 //BLUE APRILTAG LIMELIGHT
@@ -26,7 +25,7 @@ public class icyTele extends LinearOpMode {
     Servo turnTurret, angleTurret0, angleTurret1, popUp;
     CRServo spinny;
     DcMotorEx turret, intake, transferR, transferL, frontRight, frontLeft, backRight, backLeft;
-    boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
+    boolean xLast, bLast, lbumpLast, bPressable, lbumpPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -67,7 +66,147 @@ public class icyTele extends LinearOpMode {
         follower.startTeleopDrive();
         runtime.reset();
         while (opModeIsActive()) {
-            //BASE TELE WITH BLUE LIMELIGHT
+            //drive
+            double y = -gamepad2.left_stick_y; // Remember, this is reversed!
+            double x = -gamepad2.left_stick_x; // this is strafing
+            double rx = gamepad2.right_stick_x; // rotate (inverted)
+            boolean aimAssist = false;
+
+            // Drive with (possibly) overridden rx
+            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+            // Note: x is negated to reverse the strafing direction
+            double leftFrontPower = (y - x + rx) / denominator;
+            double leftRearPower = (y + x + rx) / denominator;
+            double rightFrontPower = (y + x - rx) / denominator;
+            double rightRearPower = (y - x - rx) / denominator;
+
+            frontLeft.setPower(leftFrontPower);
+            backLeft.setPower(leftRearPower);
+            frontRight.setPower(rightFrontPower);
+            backRight.setPower(rightRearPower);
+
+
+            // Handle X/B edge presses every loop (even if no valid LL result)
+            boolean xPressed = gamepad2.x;
+            boolean bPressed = gamepad2.b;
+            boolean yPressed = gamepad2.y;
+            boolean xEdge = xPressed && !xLast;
+            boolean bEdge = bPressed && !bLast;
+
+
+            //JUST intake
+            if (gamepad1.right_bumper && !rbumpLast) {
+                rbumpPressable = !rbumpPressable;
+            }
+            if (rbumpPressable) {
+                intake.setPower(0.5);
+                telemetry.addData("Intake Power", intake.getPower());
+            }
+            else {
+                intake.setPower(0);
+            }
+            rbumpLast = gamepad1.right_bumper;
+
+
+            //JUST TRANSFER
+            if (gamepad1.left_bumper && !lbumpLast) {
+                lbumpPressable = !lbumpPressable;
+            }
+            if (lbumpPressable) {
+                transferL.setPower(1);
+                transferR.setPower(1);
+
+            }
+            else {
+                transferL.setPower(0);
+                transferR.setPower(0);
+            }
+            lbumpLast = gamepad1.left_bumper;
+
+
+            //BOTH INTAKE AND TRANSFER
+            if (gamepad1.x)
+            {
+                intake.setPower(1);
+                transferR.setPower(1);
+                transferL.setPower(1);
+                //spinny.setPower(1);
+                turret.setPower(1);
+            }
+            else {
+                intake.setPower(0);
+                transferR.setPower(0);
+                transferL.setPower(0);
+                //spinny.setPower(0);
+                turret.setPower(0);
+
+            }
+
+
+            //POP UP
+            if (gamepad1.y && !popSequenceActive) {
+                popSequenceActive = true;
+                popSequenceComplete = false;
+                sequenceStartTime = System.currentTimeMillis();
+            }
+
+            if (popSequenceActive && !popSequenceComplete) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                switch (popSequenceStep) {
+                    case 0:
+                        popUp.setPosition(0.105);
+                        if (elapsedTime >= 500) {
+                            popSequenceStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        popUp.setPosition(0.14);
+                        popSequenceComplete = true;
+                        popSequenceActive = false;
+                        sequenceStartTime = 0;
+                        popSequenceStep = 0;
+                        break;
+                }
+            }
+
+
+            //TURRET
+            if (gamepad1.a && !aLast) {
+                aPressable = !aPressable;
+            }
+            if (aPressable) {
+                //spinny.setPower(1);
+                turret.setPower(1);
+                //telemetry.addData("Spinny Power", spinny.getPower());
+                telemetry.addData("Turret Power", turret.getPower());
+            }
+            else {
+                //spinny.setPower(0);
+                turret.setPower(0);
+            }
+            aLast = gamepad1.a;
+            telemetry.update();
+
+
+            //ANGLE TURRET
+            if (gamepad1.dpad_down) {
+                angleTurret0.setPosition(0.135);
+                telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
+                angleTurret1.setPosition(0.865);
+                telemetry.addData("Servo Position (1): ", angleTurret1.getPosition());
+                telemetry.update();
+            }
+
+            else if (gamepad1.dpad_up) {
+                angleTurret0.setPosition(0.09);
+                telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
+                angleTurret1.setPosition(0.91);
+                telemetry.addData("Servo Position (2): ", angleTurret1.getPosition());
+                telemetry.update();
+            }
+
+            telemetry.update();
         }
     }
 }
