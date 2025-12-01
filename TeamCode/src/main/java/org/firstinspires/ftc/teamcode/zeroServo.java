@@ -13,7 +13,7 @@ public class zeroServo extends LinearOpMode {
         servo1 = hardwareMap.get(Servo.class, "angleTurret0");
         servo1.setPosition(0);
         servo2 = hardwareMap.get(Servo.class, "angleTurret1");
-        servo2.setPosition(1);
+        servo2.setPosition(0.99);
         waitForStart();
         while (opModeIsActive()) {
             if (gamepad1.a) {
