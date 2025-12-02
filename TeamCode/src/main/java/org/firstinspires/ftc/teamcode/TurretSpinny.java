@@ -19,8 +19,8 @@ public class TurretSpinny extends LinearOpMode {
 
     public ElapsedTime runtime = new ElapsedTime();
     Servo turnTurret;
-    DcMotorEx turret;//, frontLeft, frontRight, backLeft, backRight;
-    //public Follower follower;
+    DcMotorEx turret, frontLeft, frontRight, backLeft, backRight;
+    public Follower follower;
     boolean b2Last;
     double servoPos;
     // Aim-assist button/state
@@ -38,19 +38,19 @@ public class TurretSpinny extends LinearOpMode {
     // Tunables for geometry-based distance
     private double cameraHeightM = 0.25;      // set your camera height (m)
     private double tagHeightM = 0.80;         // set your tag center height (m)
-    private double cameraMountPitchDeg = 0.0; // camera tilt up (+deg)
+    private double cameraMountPitchDeg = 25.0; // camera tilt up (+deg)
 
     @Override
     public void runOpMode() throws InterruptedException {
 
-        //follower=Constants.createFollower(hardwareMap);
-        //frontLeft=hardwareMap.get(DcMotorEx.class, "leftFront");
-        //frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
-        //backLeft=hardwareMap.get(DcMotorEx.class, "leftBack");
-        //backRight= hardwareMap.get(DcMotorEx.class, "rightBack");
+        follower=Constants.createFollower(hardwareMap);
+        frontLeft=hardwareMap.get(DcMotorEx.class, "leftFront");
+        frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
+        backLeft=hardwareMap.get(DcMotorEx.class, "leftBack");
+        backRight= hardwareMap.get(DcMotorEx.class, "rightBack");
         // Set constants BEFORE constructing pose/follower utilities
         turnTurret=hardwareMap.get(Servo.class, "turnTurret");
-        turnTurret.scaleRange(0, 1);
+        //turnTurret.scaleRange(0, 1);
         turnTurret.setPosition(0);
         turret=hardwareMap.get(DcMotorEx.class, "turret");
         servoPos = turnTurret.getPosition() * 360;
@@ -69,7 +69,7 @@ public class TurretSpinny extends LinearOpMode {
 
 
         waitForStart();
-        //follower.startTeleopDrive();
+        follower.startTeleopDrive();
         runtime.reset();
         while (opModeIsActive()) {
 //ALWAYS
@@ -90,7 +90,7 @@ public class TurretSpinny extends LinearOpMode {
                     limelight.pipelineSwitch(1);
                     currentPipeline = 1;
                 }
-                aimActive = false;
+                aimActive = true;
                 aimSettleCount = 0;
             }
 
@@ -157,14 +157,14 @@ public class TurretSpinny extends LinearOpMode {
                             //double minPower = 0.12;
                             //double rxAuto;
                             double epsDriveDeg = 1.0;
-                            if (Math.abs(txDeg) > epsDriveDeg) {
+
                                 //rxAuto = kP * txDeg;
                                 servoPos = servoPos + txDeg;
                                 turnTurret.setPosition(servoPos/360);
                                 //if (Math.abs(rxAuto) < minPower) {
                                     //rxAuto = Math.copySign(minPower, rxAuto);
                                 //}
-                            } //else {
+                             //else {
                                 //rxAuto = 0.0;
                             //}
                             //if (rxAuto > 0.6) rxAuto = 0.6;
@@ -180,7 +180,7 @@ public class TurretSpinny extends LinearOpMode {
                             if (aimSettleCount >= 5) {
                                 aimActive = false;
                             }
-                            telemetry.addData("AimAssist", String.format("TAG ACTIVE rx=%.3f tx=%.2f", txDeg));
+                            telemetry.addData("AimAssist", txDeg);
                         } else {
                             telemetry.addData("AimAssist", "READY (press X)");
                         }
@@ -192,11 +192,16 @@ public class TurretSpinny extends LinearOpMode {
 
 
             //Drive with (possibly) overridden rx
-            /*double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
             double leftFrontPower = (y + x + rx) / denominator;
             double leftRearPower = (y - x + rx) / denominator;
             double rightFrontPower = (y - x - rx) / denominator;
-            double rightRearPower = (y + x - rx) / denominator;*/
+            double rightRearPower = (y + x - rx) / denominator;
+
+            frontLeft.setPower(leftFrontPower);
+            backLeft.setPower(leftRearPower);
+            frontRight.setPower(rightFrontPower);
+            backRight.setPower(rightRearPower);
 
 
         }

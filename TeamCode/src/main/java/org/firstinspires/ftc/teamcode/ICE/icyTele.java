@@ -132,7 +132,7 @@ public class icyTele extends LinearOpMode {
                         transferL.setPower(0.5);
                         transferR.setPower(0.5);
                         spinny.setPower(0.3);
-                        if (elapsedTime >= 4000) {
+                        if (elapsedTime >= 3000) {
                             holdSequenceStep++;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -168,17 +168,35 @@ public class icyTele extends LinearOpMode {
                             afterHoldStep++;
                             sequenceStartTime = System.currentTimeMillis();
                         }
+                        telemetry.addData("case 0", "turret only");
+                        telemetry.update();
                         break;
                     case 1:
                         turret.setPower(1);
                         spinny.setPower(1);
                         transferL.setPower(0.5);
                         transferR.setPower(0.5);
+                        if (elapsedTime>=4000)
+                        {
+                            afterHoldStep++;
+                        }
+
+
+                        telemetry.addData("case 1", "everything");
+                        telemetry.update();
+                        break;
+                    case 2:
+                        turret.setPower(0);
+                        spinny.setPower(0);
+                        transferL.setPower(0);
+                        transferR.setPower(0);
                         afterHoldComplete = true;
                         afterHoldActive = false;
                         sequenceStartTime = 0;
-                        afterHoldStep = 0;
+                        telemetry.addData("case 2", "stop");
+                        telemetry.update();
                         break;
+
                     //then popup
                 }
             }

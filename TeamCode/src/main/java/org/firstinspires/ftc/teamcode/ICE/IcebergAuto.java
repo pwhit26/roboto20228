@@ -65,7 +65,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
         transferL=hardwareMap.get(DcMotorEx.class, "transferL");
         transferL.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        servoPos = turnTurret.getPosition() * 360;
+
 
         popup=hardwareMap.get(Servo.class, "popup");
         popup.setPosition(0.14);
@@ -77,6 +77,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
         turnTurret=hardwareMap.get(Servo.class, "turnTurret");
         turnTurret.scaleRange(0, 1);
         turnTurret.setPosition(0);
+        servoPos = turnTurret.getPosition() * 360;
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         if (limelight != null) {
@@ -89,7 +90,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
         //Pedro Pathing Visualizer Values
         IceBerg = new Pose(22.1, 125.1, Math.toRadians(325));
-        shoot = new Pose(57.7, 87.8, Math.toRadians(180));
+        //shoot = new Pose(57.7, 87.8, Math.toRadians(180));
+        shoot = new Pose(30, 120, Math.toRadians(180));
         grabBalls = new Pose(15, 86.3, Math.toRadians(-178));
 
         //Our field zero values
@@ -176,12 +178,16 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
         @Override
     public void loop() {
+            //if (follower != null) {
+                //follower.update();
+            //}
         //Switch Cases
         long elapsedTime = System.currentTimeMillis() - startTime;
         switch (pathState)
         {
             case 0: //start first path
                 follower.followPath(shoot1);
+                follower.update();
                 if (elapsedTime >= 3500) {
                     pathState++;
                     aimActive=true;
@@ -236,6 +242,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
                 transferL.setPower(0.3);
                 transferR.setPower(0.3);
                 follower.followPath(grab1);
+                follower.update();
                 if (elapsedTime>=10000)
                 {
                     pathState++;
@@ -247,6 +254,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
                 transferL.setPower(0.2);
                 transferR.setPower(0.2);
                 follower.followPath(shoot2);
+                follower.update();
                 if (elapsedTime>=13000)
                 {
                     pathState++;

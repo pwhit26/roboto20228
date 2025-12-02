@@ -26,7 +26,7 @@ public class deathByAuto extends OpMode {
     
     // Drive motors
     private DcMotorEx frontRight, frontLeft, backRight, backLeft, turret;
-    private Servo angleTurret0, angleTurret1, popUp;
+    private Servo angleTurret0, angleTurret1, popup;
 
     @Override
     public void init() {
@@ -43,18 +43,18 @@ public class deathByAuto extends OpMode {
         backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.135);
+        angleTurret0.setPosition(0.04);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.865);
+        angleTurret1.setPosition(0.95);
         turret = hardwareMap.get(DcMotorEx.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.REVERSE);
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        popUp=hardwareMap.get(Servo.class, "popUp");
-        popUp.setPosition(0.14);
+        popup=hardwareMap.get(Servo.class, "popup");
+        popup.setPosition(0.14);
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
-        shoot = new Pose(80, 0, Math.toRadians(0));
+        shoot = new Pose(20, 0, Math.toRadians(0));
         shoot2 = new Pose(80, 0, Math.toRadians(0));
         // Initialize follower
         follower = Constants.createFollower(hardwareMap);
@@ -126,7 +126,7 @@ public class deathByAuto extends OpMode {
                     frontLeft.setPower(0);
                     backRight.setPower(0);
                     backLeft.setPower(0);
-                    popUp.setPosition(0.105);
+                    popup.setPosition(0.105);
                     telemetry.addData("Status", "All paths complete");
                 }
                 if (elapsedTime >= 6000) {
