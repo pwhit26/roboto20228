@@ -20,12 +20,18 @@ public class icyTele extends LinearOpMode {
     boolean popSequenceComplete = true;
     long sequenceStartTime = 0;
     int popSequenceStep = 0;
+    int holdSequenceStep = 0;
+    boolean holdSequenceActive = false;
+    int afterHoldStep = 0;
+    boolean afterHoldActive = false;
+    boolean afterHoldComplete = true;
+    boolean holdSequenceComplete = true;
     private final Pose startPose = new Pose(0, 0, 0);
 
     Servo turnTurret, angleTurret0, angleTurret1, popUp;
     CRServo spinny;
     DcMotorEx turret, intake, transferR, transferL, frontRight, frontLeft, backRight, backLeft;
-    boolean xLast, bLast, lbumpLast, bPressable, lbumpPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
+    boolean xLast, bLast, lbumpLast, bPressable, xPressable, lbumpPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -90,8 +96,102 @@ public class icyTele extends LinearOpMode {
             boolean xPressed = gamepad2.x;
             boolean bPressed = gamepad2.b;
             boolean yPressed = gamepad2.y;
-            boolean xEdge = xPressed && !xLast;
-            boolean bEdge = bPressed && !bLast;
+
+
+            //try to hold balls
+            /*if (gamepad1.b && !bLast) {
+                bPressable = !bPressable;
+            }
+            if (bPressable) {
+                spinny.setPower(0.3);
+                intake.setPower(1);
+                transferR.setPower(0.5);
+                transferL.setPower(0.5);
+                telemetry.addData("Spinny Power", intake.getPower());
+            }
+            else {
+                spinny.setPower(0);
+                intake.setPower(0);
+                transferR.setPower(0);
+                transferL.setPower(0);
+            }
+            bLast = gamepad1.b;*/
+
+            //B, dpad Right, Y, dpad Left
+            if (gamepad1.b && !holdSequenceActive)
+            {
+                holdSequenceActive = true;
+                holdSequenceComplete = false;
+                sequenceStartTime = System.currentTimeMillis();
+            }
+            if (holdSequenceActive && !holdSequenceComplete) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                switch (holdSequenceStep) {
+                    case 0:
+                        intake.setPower(1);
+                        transferL.setPower(0.5);
+                        transferR.setPower(0.5);
+                        spinny.setPower(0.3);
+                        if (elapsedTime >= 4000) {
+                            holdSequenceStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        intake.setPower(0);
+                        transferL.setPower(0);
+                        transferR.setPower(0);
+                        spinny.setPower(0);
+                        holdSequenceComplete = true;
+                        holdSequenceActive = false;
+                        sequenceStartTime = 0;
+                        holdSequenceStep = 0;
+                        break;
+                }
+            }
+
+            //shoot after hold
+            if (gamepad1.dpad_right && !afterHoldActive)
+            {
+                afterHoldActive = true;
+                afterHoldComplete = false;
+                sequenceStartTime = System.currentTimeMillis();
+
+            }
+            if (afterHoldActive && !afterHoldComplete)
+            {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                switch (afterHoldStep) {
+                    case 0:
+                        turret.setPower(1);
+                        if (elapsedTime >= 1000) {
+                            afterHoldStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        turret.setPower(1);
+                        spinny.setPower(1);
+                        transferL.setPower(0.5);
+                        transferR.setPower(0.5);
+                        afterHoldComplete = true;
+                        afterHoldActive = false;
+                        sequenceStartTime = 0;
+                        afterHoldStep = 0;
+                        break;
+                    //then popup
+                }
+            }
+
+
+            if (gamepad1.dpad_left)
+            {
+                turret.setPower(0);
+                spinny.setPower(0);
+                intake.setPower(0);
+                transferL.setPower(0);
+                transferR.setPower(0);
+            }
 
 
             //JUST intake
@@ -125,22 +225,24 @@ public class icyTele extends LinearOpMode {
 
 
             //BOTH INTAKE AND TRANSFER
-            if (gamepad1.x)
-            {
+            if (gamepad1.x && !xLast) {
+                xPressable = !xPressable;
+            }
+            if (xPressable) {
                 intake.setPower(1);
-                transferR.setPower(1);
-                transferL.setPower(1);
-                //spinny.setPower(1);
+                transferR.setPower(0.5);
+                transferL.setPower(0.5);
                 turret.setPower(1);
+                spinny.setPower(1);
             }
             else {
                 intake.setPower(0);
                 transferR.setPower(0);
                 transferL.setPower(0);
-                //spinny.setPower(0);
                 turret.setPower(0);
-
+                spinny.setPower(0);
             }
+            xLast = gamepad1.x;
 
 
             //POP UP
