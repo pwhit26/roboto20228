@@ -10,36 +10,36 @@ public class ServoTuner extends LinearOpMode {
     private Servo angleTurret0, angleTurret1;
     public DcMotorEx turret;
     private boolean rBumpLast, lBumpLast, aLast, aPressable;
-    double skib1 = 0;
-    double skib2 = 0.99;
+    double skib1 = 1;
+    //double skib2 = 0;
     @Override
     public void runOpMode() throws InterruptedException {
         rBumpLast = false;
         lBumpLast = false;
         turret=hardwareMap.get(DcMotorEx.class, "turret");
-        angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
+        angleTurret0 = hardwareMap.get(Servo.class, "popup");
+        //angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
         angleTurret0.setPosition(skib1);
-        angleTurret1.setPosition(skib2);
+        //angleTurret1.setPosition(skib2);
         waitForStart();
         while (opModeIsActive()){
             if (gamepad1.right_bumper && !rBumpLast) {
                 skib1 = skib1 + 0.01;
-                skib2 = skib2 - 0.01;
+                //skib2 = skib2 - 0.01;
             }
             rBumpLast = gamepad1.right_bumper;
 
             if (gamepad1.left_bumper && !lBumpLast) {
                 skib1 = skib1 - 0.01;
-                skib2 = skib2 + 0.01;
+                //skib2 = skib2 + 0.01;
             }
             lBumpLast = gamepad1.left_bumper;
 
             angleTurret0.setPosition(skib1);
-            angleTurret1.setPosition(skib2);
+            //angleTurret1.setPosition(skib2);
             
             telemetry.addLine("" + skib1);
-            telemetry.addLine("" + skib2);
+            //telemetry.addLine("" + skib2);
             telemetry.update();
 
             if (gamepad1.a && !aLast) {

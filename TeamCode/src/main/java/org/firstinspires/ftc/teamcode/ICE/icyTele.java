@@ -20,6 +20,11 @@ public class icyTele extends LinearOpMode {
     boolean popSequenceComplete = true;
     long sequenceStartTime = 0;
     int popSequenceStep = 0;
+    public ElapsedTime runtime2 = new ElapsedTime();
+    boolean turretSequenceActive = false;
+    boolean turretSequenceComplete = true;
+    long sequence2StartTime = 0;
+    int turretSequenceStep = 0;
     int holdSequenceStep = 0;
     boolean holdSequenceActive = false;
     int afterHoldStep = 0;
@@ -61,11 +66,11 @@ public class icyTele extends LinearOpMode {
 
         //servo init
         popUp = hardwareMap.get(Servo.class, "popup");
-        popUp.setPosition(0.14);
+        popUp.setPosition(1);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.135);
+        angleTurret0.setPosition(0.99);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.865);
+        angleTurret1.setPosition(0.01);
         spinny = hardwareMap.get(CRServo.class, "spinny");
 
         waitForStart();
@@ -91,12 +96,137 @@ public class icyTele extends LinearOpMode {
             frontRight.setPower(rightFrontPower);
             backRight.setPower(rightRearPower);
 
+            //BOTH INTAKE AND TRANSFER
+            if (gamepad1.x && !xLast) {
+                xPressable = !xPressable;
+            }
+            if (xPressable) {
+                intake.setPower(1);
+                transferR.setPower(0.7);
+                transferL.setPower(0.7);
+                spinny.setPower(1);
+            }
+            else {
+                intake.setPower(0);
+                transferR.setPower(0);
+                transferL.setPower(0);
+                spinny.setPower(0);
+            }
+            xLast = gamepad1.x;
 
-            // Handle X/B edge presses every loop (even if no valid LL result)
-            boolean xPressed = gamepad2.x;
-            boolean bPressed = gamepad2.b;
-            boolean yPressed = gamepad2.y;
+            //JUST intake
+            if (gamepad1.b && !bLast) {
+                bPressable = !bPressable;
+            }
+            if (bPressable) {
+                intake.setPower(1);
+                telemetry.addData("Intake Power", intake.getPower());
+            }
+            else {
+                intake.setPower(0);
+            }
+            bLast = gamepad1.b;
 
+            //TURRET
+            if (gamepad1.a && !turretSequenceActive) {
+                turretSequenceActive = true;
+                turretSequenceComplete = false;
+                sequence2StartTime = System.currentTimeMillis();
+            }
+
+            if (turretSequenceActive && !turretSequenceComplete) {
+                long elapsedTime2 = System.currentTimeMillis() - sequence2StartTime;
+                switch (turretSequenceStep) {
+                    case 0:
+                        turret.setPower(1);
+                        if (elapsedTime2 >= 1000) {
+                            turretSequenceStep++;
+                            sequence2StartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        intake.setPower(1);
+                        transferR.setPower(0.7);
+                        transferL.setPower(0.7);
+                        spinny.setPower(1);
+                        if (elapsedTime2 >= 3500) {
+                            turretSequenceStep++;
+                            sequence2StartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 2:
+                        intake.setPower(1);
+                        transferR.setPower(0.7);
+                        transferL.setPower(0.7);
+                        spinny.setPower(1);
+                        turret.setPower(0);
+                        turretSequenceComplete = true;
+                        turretSequenceActive = false;
+                        sequence2StartTime = 0;
+                        turretSequenceStep = 0;
+                        break;
+                }
+            }
+
+            //POP UP
+            if (gamepad1.y && !popSequenceActive) {
+                popSequenceActive = true;
+                popSequenceComplete = false;
+                sequenceStartTime = System.currentTimeMillis();
+            }
+
+            if (popSequenceActive && !popSequenceComplete) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                switch (popSequenceStep) {
+                    case 0:
+                        turret.setPower(1);
+                        if (elapsedTime >= 1000) {
+                            popSequenceStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        popUp.setPosition(0.98);
+                        if (elapsedTime >= 500) {
+                            popSequenceStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 2:
+                        popUp.setPosition(1);
+                        popSequenceComplete = true;
+                        popSequenceActive = false;
+                        sequenceStartTime = 0;
+                        popSequenceStep = 0;
+                        break;
+                }
+            }
+
+            //ANGLE TURRET
+            if (gamepad1.dpad_down) {
+                angleTurret0.setPosition(0.99);
+                telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
+                angleTurret1.setPosition(0.01);
+                telemetry.addData("Servo Position (1): ", angleTurret1.getPosition());
+                telemetry.update();
+            }
+
+            else if (gamepad1.dpad_up) {
+                angleTurret0.setPosition(0.91);
+                telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
+                angleTurret1.setPosition(0.09);
+                telemetry.addData("Servo Position (2): ", angleTurret1.getPosition());
+                telemetry.update();
+            }
+
+            if (gamepad1.guide)
+            {
+                turret.setPower(0);
+                spinny.setPower(0);
+                intake.setPower(0);
+                transferL.setPower(0);
+                transferR.setPower(0);
+            }
 
             //try to hold balls
             /*if (gamepad1.b && !bLast) {
@@ -117,6 +247,8 @@ public class icyTele extends LinearOpMode {
             }
             bLast = gamepad1.b;*/
 
+            //EXPERIMENTAL MACROS
+            /*
             //B, dpad Right, Y, dpad Left
             if (gamepad1.b && !holdSequenceActive)
             {
@@ -200,132 +332,7 @@ public class icyTele extends LinearOpMode {
                     //then popup
                 }
             }
-
-
-            if (gamepad1.dpad_left)
-            {
-                turret.setPower(0);
-                spinny.setPower(0);
-                intake.setPower(0);
-                transferL.setPower(0);
-                transferR.setPower(0);
-            }
-
-
-            //JUST intake
-            if (gamepad1.right_bumper && !rbumpLast) {
-                rbumpPressable = !rbumpPressable;
-            }
-            if (rbumpPressable) {
-                intake.setPower(0.5);
-                telemetry.addData("Intake Power", intake.getPower());
-            }
-            else {
-                intake.setPower(0);
-            }
-            rbumpLast = gamepad1.right_bumper;
-
-
-            //JUST TRANSFER
-            if (gamepad1.left_bumper && !lbumpLast) {
-                lbumpPressable = !lbumpPressable;
-            }
-            if (lbumpPressable) {
-                transferL.setPower(1);
-                transferR.setPower(1);
-
-            }
-            else {
-                transferL.setPower(0);
-                transferR.setPower(0);
-            }
-            lbumpLast = gamepad1.left_bumper;
-
-
-            //BOTH INTAKE AND TRANSFER
-            if (gamepad1.x && !xLast) {
-                xPressable = !xPressable;
-            }
-            if (xPressable) {
-                intake.setPower(1);
-                transferR.setPower(0.5);
-                transferL.setPower(0.5);
-                turret.setPower(1);
-                spinny.setPower(1);
-            }
-            else {
-                intake.setPower(0);
-                transferR.setPower(0);
-                transferL.setPower(0);
-                turret.setPower(0);
-                spinny.setPower(0);
-            }
-            xLast = gamepad1.x;
-
-
-            //POP UP
-            if (gamepad1.y && !popSequenceActive) {
-                popSequenceActive = true;
-                popSequenceComplete = false;
-                sequenceStartTime = System.currentTimeMillis();
-            }
-
-            if (popSequenceActive && !popSequenceComplete) {
-                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
-                switch (popSequenceStep) {
-                    case 0:
-                        popUp.setPosition(0.105);
-                        if (elapsedTime >= 500) {
-                            popSequenceStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 1:
-                        popUp.setPosition(0.14);
-                        popSequenceComplete = true;
-                        popSequenceActive = false;
-                        sequenceStartTime = 0;
-                        popSequenceStep = 0;
-                        break;
-                }
-            }
-
-
-            //TURRET
-            if (gamepad1.a && !aLast) {
-                aPressable = !aPressable;
-            }
-            if (aPressable) {
-                //spinny.setPower(1);
-                turret.setPower(1);
-                //telemetry.addData("Spinny Power", spinny.getPower());
-                telemetry.addData("Turret Power", turret.getPower());
-            }
-            else {
-                //spinny.setPower(0);
-                turret.setPower(0);
-            }
-            aLast = gamepad1.a;
-            telemetry.update();
-
-
-            //ANGLE TURRET
-            if (gamepad1.dpad_down) {
-                angleTurret0.setPosition(0.135);
-                telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
-                angleTurret1.setPosition(0.865);
-                telemetry.addData("Servo Position (1): ", angleTurret1.getPosition());
-                telemetry.update();
-            }
-
-            else if (gamepad1.dpad_up) {
-                angleTurret0.setPosition(0.09);
-                telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
-                angleTurret1.setPosition(0.91);
-                telemetry.addData("Servo Position (2): ", angleTurret1.getPosition());
-                telemetry.update();
-            }
-
+             */
             telemetry.update();
         }
     }
