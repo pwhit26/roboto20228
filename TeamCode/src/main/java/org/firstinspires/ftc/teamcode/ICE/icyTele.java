@@ -174,7 +174,7 @@ public class icyTele extends LinearOpMode {
                 popSequenceComplete = false;
                 sequenceStartTime = System.currentTimeMillis();
             }
-
+//hi
             if (popSequenceActive && !popSequenceComplete) {
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 switch (popSequenceStep) {
