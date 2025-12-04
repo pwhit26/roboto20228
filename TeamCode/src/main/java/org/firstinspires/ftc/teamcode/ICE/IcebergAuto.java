@@ -89,15 +89,15 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 
         //Pedro Pathing Visualizer Values
-        IceBerg = new Pose(22.1, 125.1, Math.toRadians(325));
+        //IceBerg = new Pose(22.1, 125.1, Math.toRadians(325));
         //shoot = new Pose(57.7, 87.8, Math.toRadians(180));
-        shoot = new Pose(30, 120, Math.toRadians(180));
-        grabBalls = new Pose(15, 86.3, Math.toRadians(-178));
+        //shoot = new Pose(30, 120, Math.toRadians(180));
+        //grabBalls = new Pose(15, 86.3, Math.toRadians(-178));
 
         //Our field zero values
-        //IceBerg = new Pose(0, 0, Math.toRadians(325));
-        //shoot = new Pose(40, 38, Math.toRadians(180));
-        //grabBalls = new Pose(42, -4, Math.toRadians(-178));
+        IceBerg = new Pose(0, 0, Math.toRadians(325));
+        shoot = new Pose(40, 38, Math.toRadians(180));
+        grabBalls = new Pose(42, -4, Math.toRadians(-178));
 
         follower= Constants.createFollower(hardwareMap);
         follower.setStartingPose(IceBerg);
@@ -188,12 +188,12 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
             case 0: //start first path
                 follower.followPath(shoot1);
                 follower.update();
-                if (elapsedTime >= 3500) {
+                if (elapsedTime >= 1000) {
                     pathState++;
                     aimActive=true;
                     startTime = System.currentTimeMillis();
                 }
-                telemetry.addData("Status", "Starting first path");
+                telemetry.addData("Status", "Starting first path: case 0");
                 break;
             case 1: //correct to goal
                 if (!follower.isBusy())
@@ -201,6 +201,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
                     correct();
                 }
                 pathState++;
+                telemetry.addData("Status", "Case 1");
                 break;
             case 2: //shoot 2 preload
                 if (!follower.isBusy())

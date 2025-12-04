@@ -14,198 +14,143 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 
-@TeleOp
+@TeleOp(name = "Turret Spinny")
 public class TurretSpinny extends LinearOpMode {
-
-    public ElapsedTime runtime = new ElapsedTime();
-    Servo turnTurret;
-    DcMotorEx turret, frontLeft, frontRight, backLeft, backRight;
-    public Follower follower;
-    boolean b2Last;
-    double servoPos;
-    // Aim-assist button/state
-    boolean xLast = false;
-    boolean bLast = false;
-    boolean yLast = false;
-    boolean aimActive = false;
-    int aimSettleCount = 0;
-    long aimStartMs = 0;
-    int currentPipeline = 1; // track current pipeline
-    // Vision mode display/state: "X" for AprilTags, "B" for green balls, "" for none
-    private String visionMode = "";
-    // Limelight
+    // Hardware
+    private Servo turnTurret;
+    private DcMotorEx turretMotor,frontRight, frontLeft, backRight, backLeft;
     private Limelight3A limelight;
-    // Tunables for geometry-based distance
-    private double cameraHeightM = 0.25;      // set your camera height (m)
-    private double tagHeightM = 0.80;         // set your tag center height (m)
-    private double cameraMountPitchDeg = 25.0; // camera tilt up (+deg)
+    private Follower follower;
+
+    // PID constants for turret control
+    private static final double KP = 0.01;  // Proportional gain (adjust as needed)
+    private static final double DEADZONE = 0.5;  // Degrees of error to ignore
+
+    // Servo limits (adjust based on your servo's range)
+    private static final double MIN_SERVO_POS = 0.28;
+    private static final double MAX_SERVO_POS = 0.7;
+    private double currentServoPos = 0.48;  // Start in the middle
+
+    // Camera configuration
+    private static final double CAMERA_ANGLE_OFFSET_DEG = 0.0; // Any mounting angle offset
 
     @Override
-    public void runOpMode() throws InterruptedException {
-
-        follower=Constants.createFollower(hardwareMap);
-        frontLeft=hardwareMap.get(DcMotorEx.class, "leftFront");
-        frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
-        backLeft=hardwareMap.get(DcMotorEx.class, "leftBack");
-        backRight= hardwareMap.get(DcMotorEx.class, "rightBack");
-        // Set constants BEFORE constructing pose/follower utilities
-        turnTurret=hardwareMap.get(Servo.class, "turnTurret");
-        //turnTurret.scaleRange(0, 1);
-        turnTurret.setPosition(0);
-        turret=hardwareMap.get(DcMotorEx.class, "turret");
-        servoPos = turnTurret.getPosition() * 360;
-
-
-        // Initialize Limelight
-
+    public void runOpMode() {
+        // Initialize hardware
+        turnTurret = hardwareMap.get(Servo.class, "turnTurret");
+        turretMotor = hardwareMap.get(DcMotorEx.class, "turret");
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
+        frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRight = hardwareMap.get(DcMotorEx.class, "rightBack");
+        backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontLeft = hardwareMap.get(DcMotorEx.class, "leftFront");
+        frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
+        backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        // Follower after constants are set
+        follower = Constants.createFollower(hardwareMap);
+
+        // Configure motor
+        turretMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // Configure Limelight for AprilTag detection
         if (limelight != null) {
-            limelight.pipelineSwitch(1);
+            limelight.pipelineSwitch(1);  // AprilTag pipeline (usually 0)
             limelight.start();
-            telemetry.addData("LL", "initialized");
-        } else {
-            telemetry.addData("LL", "not found");
         }
 
+        // Set initial servo position
+        turnTurret.scaleRange(MIN_SERVO_POS, MAX_SERVO_POS);
+        turnTurret.setPosition(currentServoPos);
 
-        waitForStart();
-        follower.startTeleopDrive();
-        runtime.reset();
-        while (opModeIsActive()) {
-//ALWAYS
-            //drive
-            double y = gamepad1.left_stick_y; // Remember, this is reversed!
-            double x = gamepad1.left_stick_x; // this is strafing
-            double rx = gamepad1.right_stick_x; // rotate
-            boolean aimAssist = false;
+        telemetry.addData("Status", "Initialized. Press Start to begin tracking.");
+        telemetry.update();
 
-            // Handle X/B edge presses every loop (even if no valid LL result)
-            boolean xPressed = gamepad1.x && !xLast;
-            boolean bPressed = gamepad1.b && !bLast;
-            boolean yPressed = gamepad1.y && !yLast;
 
-            if (xPressed) {
-                visionMode = "X";
-                if (limelight != null) {
-                    limelight.pipelineSwitch(1);
-                    currentPipeline = 1;
-                }
-                aimActive = true;
-                aimSettleCount = 0;
-            }
 
-            if ("X".equals(visionMode)) {
-                telemetry.addData("Mode", "X mode: looking for AprilTags");
-            }
-
-            telemetry.update();
-
-            // Limelight telemetry: angles and distance
+            // Get Limelight results
             if (limelight != null) {
-                LLResult ll = limelight.getLatestResult();
-                double txDeg = 0.0;
-                double tyDeg = 0.0;
-                double ta = 0.0;
-                boolean llValid = false;
-                if (ll != null) {
-                    txDeg = ll.getTx();
-                    tyDeg = ll.getTy();
-                    ta = ll.getTa();
-                    llValid = ll.isValid();
-                }
+                limelight.pipelineSwitch(1);  // Changed to pipeline 0 for AprilTag
+                limelight.start();
+                telemetry.addData("Limelight", "Initialized - Pipeline: %d", 1);
+            } else {
+                telemetry.addData("Limelight", "Not found in hardware map!");
+            }
 
-                telemetry.addData("Pipeline", currentPipeline);
+            // [Rest of initialization...]
 
-                if ("X".equals(visionMode))
-                {
-                    telemetry.addData("LL valid", llValid);
-                    telemetry.addData("LL tx (deg)", txDeg);
-                    telemetry.addData("LL ty (deg)", tyDeg);
+            waitForStart();
+            follower.startTeleopDrive();
 
-                }
+            while (opModeIsActive()) {
+                // [Drive code remains the same until Limelight section...]
+                //drive
+                double y = gamepad1.left_stick_y; // Remember, this is reversed!
+                double x = gamepad1.left_stick_x; // this is strafing
+                double rx = gamepad1.right_stick_x; // rotate
+                boolean aimAssist = false;
 
-                // Distance estimate (uses tag height constants; mainly useful in X mode)
-                double thetaV = Math.toRadians(cameraMountPitchDeg + tyDeg);
-                if (Math.abs(Math.cos(thetaV)) > 1e-3 && "X".equals(visionMode)) {
-                    double forwardZ = (tagHeightM - cameraHeightM) / Math.tan(thetaV);
-                    double thetaH = Math.toRadians(txDeg);
-                    double lateralX = forwardZ * Math.tan(thetaH);
-                    double verticalY = (tagHeightM - cameraHeightM);
-                    double euclid = Math.sqrt(lateralX*lateralX + verticalY*verticalY + forwardZ*forwardZ);
-                    telemetry.addData("LL forwardZ (m)", forwardZ);
-                    telemetry.addData("LL distance (m)", euclid);
-                } else {
-                    telemetry.addData("LL forwardZ (m)", "undefined angle");
-                }
+                // Handle X/B edge presses every loop (even if no valid LL result)
+                boolean xPressed = gamepad1.x;
+                boolean bPressed = gamepad1.b;
+                boolean yPressed = gamepad1.y;
 
-                // Mode-specific aim-control
+                // Drive with (possibly) overridden rx
+                double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+                double leftFrontPower = (y + x + rx) / denominator;
+                double leftRearPower = (y - x + rx) / denominator;
+                double rightFrontPower = (y - x - rx) / denominator;
+                double rightRearPower = (y + x - rx) / denominator;
 
-                    // AprilTag mode uses llValid gating
-                    if (llValid) {
-                        if (xPressed) {
-                            telemetry.addData("LL","x - aprilTag");
-                            double epsStartDeg = 1.0;
-                            aimActive = Math.abs(txDeg) > epsStartDeg;
-                            if (aimActive) {
-                                aimSettleCount = 0;
-                                aimStartMs = System.currentTimeMillis();
-                            }
-                        }
+                frontLeft.setPower(leftFrontPower);
+                backLeft.setPower(leftRearPower);
+                frontRight.setPower(rightFrontPower);
+                backRight.setPower(rightRearPower);
 
-                        if (aimActive) {
-                            //double kP = 0.015;
-                            //double minPower = 0.12;
-                            //double rxAuto;
-                            double epsDriveDeg = 1.0;
+                // Get Limelight results
+                if (limelight != null) {
+                    LLResult ll = limelight.getLatestResult();
+                    telemetry.addData("Limelight", "Got result: %s", ll != null ? "Valid" : "Null");
 
-                                //rxAuto = kP * txDeg;
-                                servoPos = servoPos + txDeg;
-                                turnTurret.setPosition(servoPos/360);
-                                //if (Math.abs(rxAuto) < minPower) {
-                                    //rxAuto = Math.copySign(minPower, rxAuto);
-                                //}
-                             //else {
-                                //rxAuto = 0.0;
-                            //}
-                            //if (rxAuto > 0.6) rxAuto = 0.6;
-                            //if (rxAuto < -0.6) rxAuto = -0.6;
-                            //rx = rxAuto;
+                    if (ll != null) {
+                        boolean isValid = ll.isValid();
+                        double tx = ll.getTx();
+                        double ty = ll.getTy();
+                        double ta = ll.getTa();
 
-                            double epsDeg = 1.0;
-                            if (Math.abs(txDeg) <= epsDeg) {
-                                aimSettleCount++;
-                            } else {
-                                aimSettleCount = 0;
-                            }
-                            if (aimSettleCount >= 5) {
-                                aimActive = false;
-                            }
-                            telemetry.addData("AimAssist", txDeg);
+                        telemetry.addData("LL Valid", isValid);
+                        //telemetry.addData("AprilTag ID", tid);
+                        telemetry.addData("TX/TY/TA", "%.2f / %.2f / %.2f", tx, ty, ta);
+
+                        if (isValid) {
+                            // [Rest of your tracking code...]
                         } else {
-                            telemetry.addData("AimAssist", "READY (press X)");
+                            telemetry.addData("Status", "No AprilTag detected - Check pipeline and tag visibility");
                         }
                     } else {
-                        telemetry.addData("LL", "no valid tag target");
+                        telemetry.addData("Status", "LL Result is null - Check Limelight connection");
                     }
+                } else {
+                    telemetry.addData("Status", "Limelight not initialized");
+                }
 
+                telemetry.update();
+                sleep(20);
             }
-
-
-            //Drive with (possibly) overridden rx
-            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
-            double leftFrontPower = (y + x + rx) / denominator;
-            double leftRearPower = (y - x + rx) / denominator;
-            double rightFrontPower = (y - x - rx) / denominator;
-            double rightRearPower = (y + x - rx) / denominator;
-
-            frontLeft.setPower(leftFrontPower);
-            backLeft.setPower(leftRearPower);
-            frontRight.setPower(rightFrontPower);
-            backRight.setPower(rightRearPower);
-
-
         }
 
 
+    // Helper method to calculate distance to target
+    private double calculateDistance(double ty) {
+        // Camera configuration (adjust these values)
+        double cameraHeightM = 0.25;      // Height of camera from ground in meters
+        double tagHeightM = 0.80;         // Height of AprilTag from ground
+        double cameraMountPitchDeg = 25.0; // Camera angle from horizontal
+
+        // Calculate distance using trigonometry
+        double angleToTargetRadians = Math.toRadians(cameraMountPitchDeg + ty);
+        return (tagHeightM - cameraHeightM) / Math.tan(angleToTargetRadians);
     }
-}
+
+    }

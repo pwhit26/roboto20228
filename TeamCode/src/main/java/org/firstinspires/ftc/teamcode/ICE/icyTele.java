@@ -72,6 +72,9 @@ public class icyTele extends LinearOpMode {
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
         angleTurret1.setPosition(0.01);
         spinny = hardwareMap.get(CRServo.class, "spinny");
+        turnTurret = hardwareMap.get(Servo.class, "turnTurret");
+        turnTurret.setPosition(0.48);
+        turnTurret.scaleRange(0.21, 0.7); //hard limits, 0.7 left, 0.21 right
 
         waitForStart();
         follower.startTeleopDrive();
