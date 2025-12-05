@@ -638,7 +638,7 @@ class ForwardZeroPowerAccelerationTuner extends OpMode {
  */
 class LateralZeroPowerAccelerationTuner extends OpMode {
     private final ArrayList<Double> accelerations = new ArrayList<>();
-    public static double VELOCITY = 30;
+    public static double VELOCITY1 = 10;
     private double previousVelocity;
     private long previousTimeNano;
     private boolean stopping;
@@ -650,7 +650,7 @@ class LateralZeroPowerAccelerationTuner extends OpMode {
     /** This initializes the drive motors as well as the Panels telemetry. */
     @Override
     public void init_loop() {
-        telemetryM.debug("The robot will run to the right until it reaches " + VELOCITY + " inches per second.");
+        telemetryM.debug("The robot will run to the right until it reaches " + VELOCITY1 + " inches per second.");
         telemetryM.debug("Then, it will cut power from the drivetrain and roll to a stop.");
         telemetryM.debug("Make sure you have enough room.");
         telemetryM.debug("After stopping, the lateral zero power acceleration (natural deceleration) will be displayed.");
@@ -687,7 +687,7 @@ class LateralZeroPowerAccelerationTuner extends OpMode {
         Vector heading = new Vector(1.0, follower.getPose().getHeading() - Math.PI / 2);
         if (!end) {
             if (!stopping) {
-                if (Math.abs(follower.getVelocity().dot(heading)) > VELOCITY) {
+                if (Math.abs(follower.getVelocity().dot(heading)) > VELOCITY1) {
                     previousVelocity = Math.abs(follower.getVelocity().dot(heading));
                     previousTimeNano = System.nanoTime();
                     stopping = true;
@@ -866,7 +866,7 @@ class HeadingTuner extends OpMode {
  * @version 1.0, 3/12/2024
  */
 class DriveTuner extends OpMode {
-    public static double DISTANCE = 40;
+    public static double DISTANCE = 25;
     private boolean forward = true;
 
     private PathChain forwards;
@@ -944,7 +944,7 @@ class DriveTuner extends OpMode {
  * @version 1.0, 3/12/2024
  */
 class Line extends OpMode {
-    public static double DISTANCE = 40;
+    public static double DISTANCE = 25;
     private boolean forward = true;
 
     private Path forwards;
