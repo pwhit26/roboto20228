@@ -66,15 +66,18 @@ public class icyTele extends LinearOpMode {
 
         //servo init
         popUp = hardwareMap.get(Servo.class, "popup");
-        popUp.setPosition(1);
+        popUp.scaleRange(0.19, 0.24); //0.19 is up, 0.24 is down
+        popUp.setPosition(0.8);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.99);
+        angleTurret0.setPosition(0.5);
+        angleTurret0.scaleRange(0.44,0.58);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.01);
+        angleTurret1.setPosition(0.5);
+        angleTurret1.scaleRange(0.42, 0.56);
         spinny = hardwareMap.get(CRServo.class, "spinny");
         turnTurret = hardwareMap.get(Servo.class, "turnTurret");
-        turnTurret.setPosition(0.48);
         turnTurret.scaleRange(0.21, 0.7); //hard limits, 0.7 left, 0.21 right
+        turnTurret.setPosition(0.5);
 
         waitForStart();
         follower.startTeleopDrive();
@@ -98,6 +101,8 @@ public class icyTele extends LinearOpMode {
             backLeft.setPower(leftRearPower);
             frontRight.setPower(rightFrontPower);
             backRight.setPower(rightRearPower);
+
+            //GRAB 3 BALLS AND SHOOT SEQUENCE: X for intaking 2 balls, X to stop, B to get third Ball, B to stop, A for turret to shoot 2 balls, Y for popup to shoot 3rd ball
 
             //BOTH INTAKE AND TRANSFER
             if (gamepad1.x && !xLast) {
@@ -149,8 +154,8 @@ public class icyTele extends LinearOpMode {
                         break;
                     case 1:
                         intake.setPower(1);
-                        transferR.setPower(0.7);
-                        transferL.setPower(0.7);
+                        transferR.setPower(0.9);
+                        transferL.setPower(0.9);
                         spinny.setPower(1);
                         if (elapsedTime2 >= 3500) {
                             turretSequenceStep++;
@@ -159,8 +164,8 @@ public class icyTele extends LinearOpMode {
                         break;
                     case 2:
                         intake.setPower(1);
-                        transferR.setPower(0.7);
-                        transferL.setPower(0.7);
+                        transferR.setPower(0.9);
+                        transferL.setPower(0.9);
                         spinny.setPower(1);
                         turret.setPower(0);
                         turretSequenceComplete = true;
@@ -171,7 +176,7 @@ public class icyTele extends LinearOpMode {
                 }
             }
 
-            //POP UP
+            //POP UP --> shoots one ball
             if (gamepad1.y && !popSequenceActive) {
                 popSequenceActive = true;
                 popSequenceComplete = false;
@@ -189,14 +194,16 @@ public class icyTele extends LinearOpMode {
                         }
                         break;
                     case 1:
-                        popUp.setPosition(0.98);
+                        popUp.setPosition(0.1);
                         if (elapsedTime >= 500) {
                             popSequenceStep++;
                             sequenceStartTime = System.currentTimeMillis();
                         }
                         break;
                     case 2:
-                        popUp.setPosition(1);
+                        popUp.setPosition(0.9);
+                            turret.setPower(0);
+
                         popSequenceComplete = true;
                         popSequenceActive = false;
                         sequenceStartTime = 0;
@@ -207,17 +214,17 @@ public class icyTele extends LinearOpMode {
 
             //ANGLE TURRET
             if (gamepad1.dpad_down) {
-                angleTurret0.setPosition(0.99);
+                angleTurret0.setPosition(0.8);
                 telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
-                angleTurret1.setPosition(0.01);
+                angleTurret1.setPosition(0.2);
                 telemetry.addData("Servo Position (1): ", angleTurret1.getPosition());
                 telemetry.update();
             }
 
             else if (gamepad1.dpad_up) {
-                angleTurret0.setPosition(0.91);
+                angleTurret0.setPosition(0.2);
                 telemetry.addData("Servo Position (1): ", angleTurret0.getPosition());
-                angleTurret1.setPosition(0.09);
+                angleTurret1.setPosition(0.8);
                 telemetry.addData("Servo Position (2): ", angleTurret1.getPosition());
                 telemetry.update();
             }
