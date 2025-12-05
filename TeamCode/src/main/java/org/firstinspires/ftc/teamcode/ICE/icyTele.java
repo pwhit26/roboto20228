@@ -32,7 +32,7 @@ public class icyTele extends LinearOpMode {
     boolean afterHoldComplete = true;
     boolean holdSequenceComplete = true;
     private final Pose startPose = new Pose(0, 0, 0);
-
+//hi
     Servo turnTurret, angleTurret0, angleTurret1, popUp;
     CRServo spinny;
     DcMotorEx turret, intake, transferR, transferL, frontRight, frontLeft, backRight, backLeft;
