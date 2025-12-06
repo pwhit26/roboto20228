@@ -166,7 +166,7 @@ public class deathByAuto extends OpMode {
                     transferL.setPower(0.7);
                     spinny.setPower(1);
                 }
-                if (elapsedTime >= 4500) {
+                if (elapsedTime >= 4000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -176,7 +176,7 @@ public class deathByAuto extends OpMode {
                 if (!follower.isBusy()) {
                     popUp.setPosition(0.1);
                 }
-                if (elapsedTime >= 5000) {
+                if (elapsedTime >= 2000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -188,14 +188,64 @@ public class deathByAuto extends OpMode {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
-                telemetry.addData("Status", "Starting fifth path");
+                telemetry.addData("Status", "Starting third path");
 
                 break;
             case 5:
+                follower.followPath(preSco1);
+                if (elapsedTime >= 3000) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("Status", "Starting fourth path");
 
+                break;
+            case 6:
+                follower.followPath(sco1Sho);
+                if (elapsedTime >= 3000) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("Status", "Starting fifth path");
 
+                break;
 
-            case 5: // All paths complete
+            case 7: // First path in progress
+
+                if (!follower.isBusy()) {
+                    turret.setPower(1); //1 for low battery
+                }
+                if (elapsedTime >= 4000) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("Status", "Starting second path");
+                break;
+
+            case 8:
+                if (!follower.isBusy()) {
+                    intake.setPower(1);
+                    transferR.setPower(0.7);
+                    transferL.setPower(0.7);
+                    spinny.setPower(1);
+                }
+                if (elapsedTime >= 4000) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 9:
+                if (!follower.isBusy()) {
+                    popUp.setPosition(0.1);
+                }
+                if (elapsedTime >= 5000) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 10: // All paths complete
                 // Robot is stopped, do nothing
                 return;
         }
