@@ -6,6 +6,7 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -23,14 +24,16 @@ public class deathByAuto extends OpMode {
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
     public ElapsedTime runtime = new ElapsedTime();
-    
-    // Drive motors
-    private DcMotorEx frontRight, frontLeft, backRight, backLeft, turret;
-    private Servo angleTurret0, angleTurret1, popup;
+    //hi
+    Servo turnTurret, angleTurret0, angleTurret1, popUp;
+    CRServo spinny;
+    DcMotorEx turret, intake, transferR, transferL, frontRight, frontLeft, backRight, backLeft;
+    boolean xLast, bLast, lbumpLast, bPressable, xPressable, lbumpPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
+
 
     @Override
     public void init() {
-        // Initialize drive motors
+        //drive motor init
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -39,22 +42,35 @@ public class deathByAuto extends OpMode {
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         frontLeft = hardwareMap.get(DcMotorEx.class, "leftFront");
         frontLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        //frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.04);
-        angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.95);
-        turret = hardwareMap.get(DcMotorEx.class, "turret");
+
+        //other motor init
+        intake = hardwareMap.get(DcMotorEx.class, "intake");
+        transferR = hardwareMap.get(DcMotorEx.class, "transferR");
+        transferL = hardwareMap.get(DcMotorEx.class, "transferL");
+        turret=hardwareMap.get(DcMotorEx.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.REVERSE);
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        popup=hardwareMap.get(Servo.class, "popup");
-        popup.setPosition(0.14);
+
+        //servo init
+        popUp = hardwareMap.get(Servo.class, "popup");
+        popUp.scaleRange(0.19, 0.24); //0.19 is up, 0.24 is down
+        popUp.setPosition(0.8);
+        angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
+        angleTurret0.setPosition(0.5);
+        angleTurret0.scaleRange(0.44,0.58);
+        angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
+        angleTurret1.setPosition(0.5);
+        angleTurret1.scaleRange(0.42, 0.56);
+        spinny = hardwareMap.get(CRServo.class, "spinny");
+        turnTurret = hardwareMap.get(Servo.class, "turnTurret");
+        turnTurret.scaleRange(0.21, 0.7); //hard limits, 0.7 left, 0.21 right
+        turnTurret.setPosition(0.1);
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
-        shoot = new Pose(20, 0, Math.toRadians(0));
+        shoot = new Pose(80, 0, Math.toRadians(-42));
         shoot2 = new Pose(80, 0, Math.toRadians(0));
         // Initialize follower
         follower = Constants.createFollower(hardwareMap);
@@ -97,9 +113,9 @@ public class deathByAuto extends OpMode {
             case 1: // First path in progress
 
                 if (!follower.isBusy()) {
-                    follower.turnDegrees(22.5, false);
+                    turret.setPower(1);
                 }
-                if (elapsedTime >= 4500) {
+                if (elapsedTime >= 4000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -108,28 +124,22 @@ public class deathByAuto extends OpMode {
 
             case 2:
                 if (!follower.isBusy()) {
-                    frontRight.setPower(0);
-                    frontLeft.setPower(0);
-                    backRight.setPower(0);
-                    backLeft.setPower(0);
-                    turret.setPower(1);
+                    transferR.setPower(0.7);
+                    transferL.setPower(0.7);
+                    spinny.setPower(1);
                 }
-                if (elapsedTime >= 5500) {
+                if (elapsedTime >= 5000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 3: // Second path in progress
+
+            case 3:
                 if (!follower.isBusy()) {
-                    // Both paths complete
-                    frontRight.setPower(0);
-                    frontLeft.setPower(0);
-                    backRight.setPower(0);
-                    backLeft.setPower(0);
-                    popup.setPosition(0.105);
-                    telemetry.addData("Status", "All paths complete");
+                    ;
                 }
-                if (elapsedTime >= 6000) {
+                if (elapsedTime >= 4000) {
+                    popUp.setPosition(0.1);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
