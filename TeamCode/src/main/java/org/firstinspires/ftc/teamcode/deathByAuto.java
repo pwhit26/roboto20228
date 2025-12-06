@@ -113,7 +113,7 @@ public class deathByAuto extends OpMode {
             case 1: // First path in progress
 
                 if (!follower.isBusy()) {
-                    turret.setPower(1);
+                    turret.setPower(1); //1 for low battery
                 }
                 if (elapsedTime >= 4000) {
                     pathStage++;
@@ -124,11 +124,12 @@ public class deathByAuto extends OpMode {
 
             case 2:
                 if (!follower.isBusy()) {
+                    intake.setPower(1);
                     transferR.setPower(0.7);
                     transferL.setPower(0.7);
                     spinny.setPower(1);
                 }
-                if (elapsedTime >= 5000) {
+                if (elapsedTime >= 4500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -136,10 +137,9 @@ public class deathByAuto extends OpMode {
 
             case 3:
                 if (!follower.isBusy()) {
-                    ;
-                }
-                if (elapsedTime >= 4000) {
                     popUp.setPosition(0.1);
+                }
+                if (elapsedTime >= 5000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }

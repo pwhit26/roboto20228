@@ -228,6 +228,12 @@ public class icyTele extends LinearOpMode {
                 telemetry.addData("Servo Position (2): ", angleTurret1.getPosition());
                 telemetry.update();
             }
+            if (gamepad1.right_bumper) {
+                intake.setPower(-1);
+                transferR.setPower(-1);
+                transferL.setPower(-1);
+                spinny.setPower(-1);
+            }
 
             if (gamepad1.guide)
             {
@@ -238,111 +244,6 @@ public class icyTele extends LinearOpMode {
                 transferR.setPower(0);
             }
 
-            //try to hold balls
-            /*if (gamepad1.b && !bLast) {
-                bPressable = !bPressable;
-            }
-            if (bPressable) {
-                spinny.setPower(0.3);
-                intake.setPower(1);
-                transferR.setPower(0.5);
-                transferL.setPower(0.5);
-                telemetry.addData("Spinny Power", intake.getPower());
-            }
-            else {
-                spinny.setPower(0);
-                intake.setPower(0);
-                transferR.setPower(0);
-                transferL.setPower(0);
-            }
-            bLast = gamepad1.b;*/
-
-            //EXPERIMENTAL MACROS
-            /*
-            //B, dpad Right, Y, dpad Left
-            if (gamepad1.b && !holdSequenceActive)
-            {
-                holdSequenceActive = true;
-                holdSequenceComplete = false;
-                sequenceStartTime = System.currentTimeMillis();
-            }
-            if (holdSequenceActive && !holdSequenceComplete) {
-                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
-                switch (holdSequenceStep) {
-                    case 0:
-                        intake.setPower(1);
-                        transferL.setPower(0.5);
-                        transferR.setPower(0.5);
-                        spinny.setPower(0.3);
-                        if (elapsedTime >= 3000) {
-                            holdSequenceStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 1:
-                        intake.setPower(0);
-                        transferL.setPower(0);
-                        transferR.setPower(0);
-                        spinny.setPower(0);
-                        holdSequenceComplete = true;
-                        holdSequenceActive = false;
-                        sequenceStartTime = 0;
-                        holdSequenceStep = 0;
-                        break;
-                }
-            }
-
-            //shoot after hold
-            if (gamepad1.dpad_right && !afterHoldActive)
-            {
-                afterHoldActive = true;
-                afterHoldComplete = false;
-                sequenceStartTime = System.currentTimeMillis();
-
-            }
-            if (afterHoldActive && !afterHoldComplete)
-            {
-                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
-                switch (afterHoldStep) {
-                    case 0:
-                        turret.setPower(1);
-                        if (elapsedTime >= 1000) {
-                            afterHoldStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        telemetry.addData("case 0", "turret only");
-                        telemetry.update();
-                        break;
-                    case 1:
-                        turret.setPower(1);
-                        spinny.setPower(1);
-                        transferL.setPower(0.5);
-                        transferR.setPower(0.5);
-                        if (elapsedTime>=4000)
-                        {
-                            afterHoldStep++;
-                        }
-
-
-                        telemetry.addData("case 1", "everything");
-                        telemetry.update();
-                        break;
-                    case 2:
-                        turret.setPower(0);
-                        spinny.setPower(0);
-                        transferL.setPower(0);
-                        transferR.setPower(0);
-                        afterHoldComplete = true;
-                        afterHoldActive = false;
-                        sequenceStartTime = 0;
-                        telemetry.addData("case 2", "stop");
-                        telemetry.update();
-                        break;
-
-                    //then popup
-                }
-            }
-             */
             telemetry.update();
         }
     }
