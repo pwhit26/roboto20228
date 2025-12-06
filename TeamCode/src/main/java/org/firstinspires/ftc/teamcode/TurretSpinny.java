@@ -27,9 +27,10 @@ public class TurretSpinny extends LinearOpMode {
     private static final double DEADZONE = 0.5;  // Degrees of error to ignore
 
     // Servo limits (adjust based on your servo's range)
-    private static final double MIN_SERVO_POS = 0.28;
-    private static final double MAX_SERVO_POS = 0.7;
-    private double currentServoPos = 0.48;  // Start in the middle
+    //private static final double MIN_SERVO_POS = 0.28;
+    //private static final double MAX_SERVO_POS = 0.7;
+    private double currentServoPos;
+    private double lastPos;// Start in the middle
 
     // Camera configuration
     private static final double CAMERA_ANGLE_OFFSET_DEG = 0.0; // Any mounting angle offset
@@ -61,8 +62,10 @@ public class TurretSpinny extends LinearOpMode {
         }
 
         // Set initial servo position
-        turnTurret.scaleRange(MIN_SERVO_POS, MAX_SERVO_POS);
-        turnTurret.setPosition(currentServoPos);
+        turnTurret.scaleRange(0.28, 0.7);
+        turnTurret.setPosition(0.5);
+        currentServoPos= turnTurret.getPosition();
+
 
         telemetry.addData("Status", "Initialized. Press Start to begin tracking.");
         telemetry.update();
@@ -119,6 +122,31 @@ public class TurretSpinny extends LinearOpMode {
                         double ty = ll.getTy();
                         double ta = ll.getTa();
 
+                            if (tx > 2)
+                            {
+                                currentServoPos = currentServoPos - 0.005;
+                                turnTurret.setPosition(currentServoPos);
+                                tx = ll.getTx();
+                                lastPos=currentServoPos;
+
+                            }
+                            if (tx<-2)
+                            {
+                                currentServoPos = currentServoPos + 0.005;
+                                turnTurret.setPosition(currentServoPos);
+                                tx = ll.getTx();
+                                lastPos=currentServoPos;
+                            }
+                            if (tx<4 && tx>-4)
+                            {
+                                turnTurret.setPosition(lastPos);
+                                tx = ll.getTx();
+                            }
+
+
+                        //currentServoPos = currentServoPos + (tx);
+
+
                         telemetry.addData("LL Valid", isValid);
                         //telemetry.addData("AprilTag ID", tid);
                         telemetry.addData("TX/TY/TA", "%.2f / %.2f / %.2f", tx, ty, ta);
@@ -126,12 +154,15 @@ public class TurretSpinny extends LinearOpMode {
                         if (isValid) {
                             // [Rest of your tracking code...]
                         } else {
+                            turnTurret.setPosition(0.5);
                             telemetry.addData("Status", "No AprilTag detected - Check pipeline and tag visibility");
                         }
                     } else {
+                        turnTurret.setPosition(0.5);
                         telemetry.addData("Status", "LL Result is null - Check Limelight connection");
                     }
                 } else {
+                    turnTurret.setPosition(0.5);
                     telemetry.addData("Status", "Limelight not initialized");
                 }
 
