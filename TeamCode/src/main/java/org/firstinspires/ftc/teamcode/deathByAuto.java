@@ -18,8 +18,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 @Autonomous(name = "Death By Auto")
 public class deathByAuto extends OpMode {
     private Follower follower;
-    private Pose start, shoot, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3;
-    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho ;
+    private Pose start, shoot, shoot2,preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3;
+    private PathChain startShoot, shootRot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho ;
     String pathState="";
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
@@ -52,6 +52,8 @@ public class deathByAuto extends OpMode {
         turret=hardwareMap.get(DcMotorEx.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.REVERSE);
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         //servo init
         popUp = hardwareMap.get(Servo.class, "popup");
@@ -65,18 +67,19 @@ public class deathByAuto extends OpMode {
         angleTurret1.scaleRange(0.42, 0.56);
         spinny = hardwareMap.get(CRServo.class, "spinny");
         turnTurret = hardwareMap.get(Servo.class, "turnTurret");
-        turnTurret.scaleRange(0.21, 0.7); //hard limits, 0.7 left, 0.21 right
-        turnTurret.setPosition(0.1);
+        turnTurret.scaleRange(0.28, 0.7); //hard limits, 0.7 left, 0.21 right
+        turnTurret.setPosition(0.5);
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
-        shoot = new Pose(80, 0, Math.toRadians(-42));
-        preScoop1 = new Pose(65, 0, Math.toRadians(-90));
-        scoop1 = new Pose(65,-32, Math.toRadians(-90));
-        preScoop2 = new Pose(40, 0, Math.toRadians(-90));
-        scoop2 = new Pose(40,-32, Math.toRadians(-90));
-        preScoop3 = new Pose(17, 0, Math.toRadians(-90));
-        scoop3 = new Pose(17,-32, Math.toRadians(-90));
+        shoot = new Pose(-20, 0, Math.toRadians(0));
+        shoot2 = new Pose(-20, 0, Math.toRadians(48));
+        preScoop1 = new Pose(-30, 0, Math.toRadians(48));
+        scoop1 = new Pose(-30,32, Math.toRadians(48));
+        preScoop2 = new Pose(40, 0, Math.toRadians(90));
+        scoop2 = new Pose(40,-32, Math.toRadians(90));
+        preScoop3 = new Pose(17, 0, Math.toRadians(90));
+        scoop3 = new Pose(17,-32, Math.toRadians(90));
 
 
 
@@ -90,6 +93,10 @@ public class deathByAuto extends OpMode {
         startShoot = follower.pathBuilder()
                 .addPath(new BezierLine(start, shoot))
                 .setLinearHeadingInterpolation(start.getHeading(), shoot.getHeading())
+                .build();
+        shootRot = follower.pathBuilder()
+                .addPath(new BezierLine(shoot, shoot2))
+                .setLinearHeadingInterpolation(shoot.getHeading(), shoot2.getHeading())
                 .build();
 
         shootPre1 = follower.pathBuilder()
@@ -140,13 +147,13 @@ public class deathByAuto extends OpMode {
         switch (pathStage) {
             case 0: // Start first path
                 follower.followPath(startShoot);
-                if (elapsedTime >= 3500) {
+                if (elapsedTime >= 3000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Starting first path");
                 break;
-                
+
             case 1: // First path in progress
 
                 if (!follower.isBusy()) {
@@ -183,6 +190,16 @@ public class deathByAuto extends OpMode {
                 break;
 
             case 4:
+                follower.followPath(shootRot);
+                if (elapsedTime >= 1500) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("Status", "Starting first path");
+                break;
+
+            case 5:
+                turret.setPower(0);
                 follower.followPath(shootPre1);
                 if (elapsedTime >= 3000) {
                     pathStage++;
@@ -191,7 +208,10 @@ public class deathByAuto extends OpMode {
                 telemetry.addData("Status", "Starting third path");
 
                 break;
-            case 5:
+            case 6:
+                popUp.setPosition(0.9);
+                turret.setPower(-0.2);
+                //spinny.setPower(-1);
                 follower.followPath(preSco1);
                 if (elapsedTime >= 3000) {
                     pathStage++;
@@ -200,20 +220,19 @@ public class deathByAuto extends OpMode {
                 telemetry.addData("Status", "Starting fourth path");
 
                 break;
-            case 6:
+            case 7:
                 follower.followPath(sco1Sho);
                 if (elapsedTime >= 3000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Starting fifth path");
-
                 break;
 
-            case 7: // First path in progress
-
+            case 8: // First path in progress
                 if (!follower.isBusy()) {
-                    turret.setPower(1); //1 for low battery
+                    turret.setPower(1);
+                    spinny.setPower(1);//1 for low battery
                 }
                 if (elapsedTime >= 4000) {
                     pathStage++;
@@ -222,7 +241,7 @@ public class deathByAuto extends OpMode {
                 telemetry.addData("Status", "Starting second path");
                 break;
 
-            case 8:
+            case 9:
                 if (!follower.isBusy()) {
                     intake.setPower(1);
                     transferR.setPower(0.7);
@@ -235,7 +254,7 @@ public class deathByAuto extends OpMode {
                 }
                 break;
 
-            case 9:
+            case 10:
                 if (!follower.isBusy()) {
                     popUp.setPosition(0.1);
                 }
@@ -245,7 +264,7 @@ public class deathByAuto extends OpMode {
                 }
                 break;
 
-            case 10: // All paths complete
+            case 11: // All paths complete
                 // Robot is stopped, do nothing
                 return;
         }

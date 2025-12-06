@@ -2,7 +2,9 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
 @TeleOp
@@ -12,20 +14,27 @@ public class ServoTuner extends LinearOpMode {
     private boolean rBumpLast, lBumpLast, aLast, aPressable;
     double skib1 = 0.5;
     double skib2 = 0.5;
+    long startTime = 0;
     @Override
     public void runOpMode() throws InterruptedException {
         rBumpLast = false;
         lBumpLast = false;
         turret=hardwareMap.get(DcMotorEx.class, "turret");
+        turret.setDirection(DcMotorSimple.Direction.REVERSE);
+        turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
         angleTurret0.setPosition(skib1);
         angleTurret1.setPosition(skib2);
         waitForStart();
         while (opModeIsActive()){
+            long elapsedTime = System.currentTimeMillis() - startTime;
             if (gamepad1.right_bumper && !rBumpLast) {
                 skib1 = skib1 + 0.01;
                 skib2 = skib2 - 0.01;
+                startTime = System.currentTimeMillis();
             }
             rBumpLast = gamepad1.right_bumper;
 
@@ -47,12 +56,13 @@ public class ServoTuner extends LinearOpMode {
             }
             if (aPressable) {
                 turret.setPower(-1);
-                telemetry.addData("Turret Power", turret.getPower());
             }
             else {
                 turret.setPower(0);
             }
             aLast = gamepad1.a;
+            telemetry.addData("Turret Power", turret.getCurrentPosition()/elapsedTime);
+            telemetry.update();
         }
     }
 }
