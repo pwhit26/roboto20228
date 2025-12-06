@@ -18,8 +18,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 @Autonomous(name = "Death By Auto")
 public class deathByAuto extends OpMode {
     private Follower follower;
-    private Pose start, shoot, shoot2;
-    private PathChain paths, side;
+    private Pose start, shoot, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3;
+    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho ;
     String pathState="";
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
@@ -71,20 +71,57 @@ public class deathByAuto extends OpMode {
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
         shoot = new Pose(80, 0, Math.toRadians(-42));
-        shoot2 = new Pose(80, 0, Math.toRadians(0));
+        preScoop1 = new Pose(65, 0, Math.toRadians(-90));
+        scoop1 = new Pose(65,-32, Math.toRadians(-90));
+        preScoop2 = new Pose(40, 0, Math.toRadians(-90));
+        scoop2 = new Pose(40,-32, Math.toRadians(-90));
+        preScoop3 = new Pose(17, 0, Math.toRadians(-90));
+        scoop3 = new Pose(17,-32, Math.toRadians(-90));
+
+
+
+
+
         // Initialize follower
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(start);
         
         // Build paths
-        paths = follower.pathBuilder()
+        startShoot = follower.pathBuilder()
                 .addPath(new BezierLine(start, shoot))
                 .setLinearHeadingInterpolation(start.getHeading(), shoot.getHeading())
                 .build();
-        side = follower.pathBuilder()
-                .addPath(new BezierLine(shoot, shoot2))
-                .setLinearHeadingInterpolation(start.getHeading(), shoot.getHeading())
+
+        shootPre1 = follower.pathBuilder()
+                .addPath(new BezierLine(shoot, preScoop1))
+                .setLinearHeadingInterpolation(shoot.getHeading(), preScoop1.getHeading())
                 .build();
+
+        preSco1 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop1, scoop1))
+                .setLinearHeadingInterpolation(preScoop1.getHeading(), scoop1.getHeading())
+                .build();
+
+        sco1Sho = follower.pathBuilder()
+                .addPath(new BezierLine(scoop1, shoot))
+                .setLinearHeadingInterpolation(scoop1.getHeading(), shoot.getHeading())
+                .build();
+
+        shootPre2 = follower.pathBuilder()
+                .addPath(new BezierLine(shoot, preScoop2))
+                .setLinearHeadingInterpolation(shoot.getHeading(), preScoop2.getHeading())
+                .build();
+
+        preSco2 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop2, scoop2))
+                .setLinearHeadingInterpolation(preScoop2.getHeading(), scoop2.getHeading())
+                .build();
+
+        sco2Sho = follower.pathBuilder()
+                .addPath(new BezierLine(scoop2, shoot))
+                .setLinearHeadingInterpolation(scoop2.getHeading(), shoot.getHeading())
+                .build();
+
 
         
         telemetry.addData("Status", "Initialized");
@@ -102,7 +139,7 @@ public class deathByAuto extends OpMode {
         long elapsedTime = System.currentTimeMillis() - startTime;
         switch (pathStage) {
             case 0: // Start first path
-                follower.followPath(paths);
+                follower.followPath(startShoot);
                 if (elapsedTime >= 3500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -144,8 +181,21 @@ public class deathByAuto extends OpMode {
                     startTime = System.currentTimeMillis();
                 }
                 break;
-                
-            case 4: // All paths complete
+
+            case 4:
+                follower.followPath(shootPre1);
+                if (elapsedTime >= 3000) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("Status", "Starting fifth path");
+
+                break;
+            case 5:
+
+
+
+            case 5: // All paths complete
                 // Robot is stopped, do nothing
                 return;
         }
