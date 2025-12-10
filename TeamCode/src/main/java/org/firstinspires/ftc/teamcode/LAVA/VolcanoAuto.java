@@ -18,8 +18,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 @Autonomous(name = "Volcano")
 public class VolcanoAuto extends OpMode {
     private Follower follower;
-    private Pose start, shoot, shoot2,preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3;
-    private PathChain startShoot, shootRot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho ;
+    private Pose start, shoot, shoot2,preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3, end, shootAgain;
+    private PathChain startShoot, shootRot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho, last ;
     String pathState="";
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
@@ -72,14 +72,11 @@ public class VolcanoAuto extends OpMode {
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
-        shoot = new Pose(-20, 0, Math.toRadians(0));
-        shoot2 = new Pose(-20, 0, Math.toRadians(-48));
-        preScoop1 = new Pose(-30, 0, Math.toRadians(-48));
-        scoop1 = new Pose(-30,-32, Math.toRadians(-48));
-        preScoop2 = new Pose(40, 0, Math.toRadians(90));
-        scoop2 = new Pose(40,-32, Math.toRadians(90));
-        preScoop3 = new Pose(17, 0, Math.toRadians(90));
-        scoop3 = new Pose(17,-32, Math.toRadians(90));
+        shoot = new Pose(-38, 0, Math.toRadians(-15));
+        shoot2 = new Pose(-38, 0, Math.toRadians(-41));
+        preScoop1 = new Pose(-33, 0, Math.toRadians(-41));
+        scoop1 = new Pose(-33,-53, Math.toRadians(-41));
+        shootAgain = new Pose (-38, 20, Math.toRadians(-20));
 
 
 
@@ -110,8 +107,8 @@ public class VolcanoAuto extends OpMode {
                 .build();
 
         sco1Sho = follower.pathBuilder()
-                .addPath(new BezierLine(scoop1, shoot))
-                .setLinearHeadingInterpolation(scoop1.getHeading(), shoot.getHeading())
+                .addPath(new BezierLine(scoop1, shootAgain))
+                .setLinearHeadingInterpolation(scoop1.getHeading(), shootAgain.getHeading())
                 .build();
 
         shootPre2 = follower.pathBuilder()
@@ -127,6 +124,10 @@ public class VolcanoAuto extends OpMode {
         sco2Sho = follower.pathBuilder()
                 .addPath(new BezierLine(scoop2, shoot))
                 .setLinearHeadingInterpolation(scoop2.getHeading(), shoot.getHeading())
+                .build();
+        last = follower.pathBuilder()
+                .addPath(new BezierLine(shoot, end))
+                .setLinearHeadingInterpolation(shoot.getHeading(), end.getHeading())
                 .build();
 
 
@@ -147,7 +148,7 @@ public class VolcanoAuto extends OpMode {
         switch (pathStage) {
             case 0: // Start first path
                 follower.followPath(startShoot);
-                if (elapsedTime >= 3000) {
+                if (elapsedTime >= 1500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -157,9 +158,9 @@ public class VolcanoAuto extends OpMode {
             case 1: // First path in progress
 
                 if (!follower.isBusy()) {
-                    turret.setPower(1); //1 for low battery
+                    turret.setPower(0.82); //1 for low battery
                 }
-                if (elapsedTime >= 4000) {
+                if (elapsedTime >= 2000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -173,7 +174,7 @@ public class VolcanoAuto extends OpMode {
                     transferL.setPower(0.7);
                     spinny.setPower(1);
                 }
-                if (elapsedTime >= 4000) {
+                if (elapsedTime >= 2700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -190,8 +191,10 @@ public class VolcanoAuto extends OpMode {
                 break;
 
             case 4:
-                follower.followPath(shootRot);
-                if (elapsedTime >= 1500) {
+                if (!follower.isBusy()) {
+                    follower.followPath(shootRot);
+                }
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -201,7 +204,7 @@ public class VolcanoAuto extends OpMode {
             case 5:
                 turret.setPower(0);
                 follower.followPath(shootPre1);
-                if (elapsedTime >= 3000) {
+                if (elapsedTime >= 2500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -211,7 +214,7 @@ public class VolcanoAuto extends OpMode {
             case 6:
                 popUp.setPosition(0.9);
                 turret.setPower(-0.2);
-                //spinny.setPower(-1);
+                spinny.setPower(-1);
                 follower.followPath(preSco1);
                 if (elapsedTime >= 3000) {
                     pathStage++;
@@ -222,7 +225,7 @@ public class VolcanoAuto extends OpMode {
                 break;
             case 7:
                 follower.followPath(sco1Sho);
-                if (elapsedTime >= 3000) {
+                if (elapsedTime >= 2000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -231,10 +234,9 @@ public class VolcanoAuto extends OpMode {
 
             case 8: // First path in progress
                 if (!follower.isBusy()) {
-                    turret.setPower(1);
-                    spinny.setPower(1);//1 for low battery
+                    turret.setPower(0.87);//1 for low battery
                 }
-                if (elapsedTime >= 4000) {
+                if (elapsedTime >= 2000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -248,7 +250,7 @@ public class VolcanoAuto extends OpMode {
                     transferL.setPower(0.7);
                     spinny.setPower(1);
                 }
-                if (elapsedTime >= 4000) {
+                if (elapsedTime >= 1000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -258,14 +260,24 @@ public class VolcanoAuto extends OpMode {
                 if (!follower.isBusy()) {
                     popUp.setPosition(0.1);
                 }
-                if (elapsedTime >= 5000) {
+                if (elapsedTime >= 1500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
             case 11: // All paths complete
+                follower.followPath(last);
+                popUp.setPosition(0.9);
+                if (elapsedTime>1000)
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+
                 // Robot is stopped, do nothing
+                break;
+            case 12:
                 return;
         }
 
