@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.LAVA;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
+import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -89,6 +90,14 @@ public class lavaTele extends LinearOpMode {
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
         angleTurret1.setPosition(0.94);
 
+        if (limelight != null) {
+            limelight.pipelineSwitch(1);  // Changed to pipeline 0 for AprilTag
+            limelight.start();
+            telemetry.addData("Limelight", "Initialized - Pipeline: %d", 1);
+        } else {
+            telemetry.addData("Limelight", "Not found in hardware map!");
+        }
+
         waitForStart();
         follower.startTeleopDrive();
         runtime.reset();
@@ -113,9 +122,35 @@ public class lavaTele extends LinearOpMode {
             frontRight.setPower(rightFrontPower);
             backRight.setPower(rightRearPower);
 
+            if (limelight!=null)
+            {
+                LLResult ll = limelight.getLatestResult();
+                telemetry.addData("Limelight", "Got result: %s", ll != null ? "Valid" : "Null");
 
+                if (ll != null) {
+                    boolean isValid = ll.isValid();
+                    double tx = ll.getTx();
+                    double ty = ll.getTy();
+                    double ta = ll.getTa();
 
+                    angleAdjust(tx);
+                    double dist=calculateDistance(ty);
+                    setTurretAngle(dist);
+                    if (gamepad1.b)
+                    {
+                        setTurretVelocity(dist);
+                    }
+                    else
+                    {
+                        turret.setVelocity(0);
+                    }
 
+                    telemetry.addData("LL Valid", isValid);
+                    //telemetry.addData("AprilTag ID", tid);
+                    telemetry.addData("TX/TY/TA", "%.2f / %.2f / %.2f", tx, ty, ta);
+                    telemetry.addData("Distance from Apriltag/Angle 0/Angle1:", "%.2f / %.2f / %.2f", dist, angleTurret0.getPosition(), angleTurret1.getPosition());
+                }
+            }
 
 
 
@@ -196,11 +231,11 @@ public class lavaTele extends LinearOpMode {
                 wasColorDetected = false;
             }
 
-            if (gamepad1.b)
+            if (gamepad1.b && (limelight==null || limelight.getLatestResult()==null))
             {
                 turret.setPower(0.6);
                 telemetry.addData("turret power:", turret.getPower());
-                telemetry.update();
+                //telemetry.update();
             }
             else {
                 turret.setPower(0);
@@ -217,7 +252,7 @@ public class lavaTele extends LinearOpMode {
                 {
                     case 0:
                         intake.setPower(0);
-                        spindexer.setPower(0.25);
+                        spindexer.setPower(0.175);
                         if (isTargetColorDetected())
                         {
                             ballcount++;
@@ -231,15 +266,15 @@ public class lavaTele extends LinearOpMode {
                         break;
                     case 1:
                         boolean intakeGo = intakeTimingDetection();
-                        if (intakeGo && ballcount<3)
+                        if (intakeGo)
                         {
-                            intake.setPower(0.5);
+                            intake.setPower(0.6);
                             spindexer.setPower(0);
                             wasColorDetected = true;
                             telemetry.addData("Intake Power", intake.getPower());
                             //telemetry.update();
                         }
-                        if (elapsedTime >= 300) {
+                        if (elapsedTime >= 350) {
                             intakeStep++;
                             sequenceStartTime = System.currentTimeMillis();
                             }
@@ -254,7 +289,7 @@ public class lavaTele extends LinearOpMode {
                         telemetry.addData("Intake Power", intake.getPower());
                         telemetry.addData("Ball Count:", ballcount);
                         //telemetry.update();
-                        spindexer.setPower(0.25);
+                        spindexer.setPower(0.175);
                         intake.setPower(0);
                         intakeStep++;
                         sequenceStartTime = System.currentTimeMillis();
@@ -279,6 +314,8 @@ public class lavaTele extends LinearOpMode {
             {
                 intakeTimingDetection();
             }
+
+            telemetry.update();
 
 
 
@@ -323,5 +360,70 @@ public class lavaTele extends LinearOpMode {
         telemetry.addData("Color seen:", "No Color");
         telemetry.update();
         return false;
+    }
+    private void angleAdjust(double tx)
+    {
+        if (tx>3)
+        {
+            turnTurret.setPower(0.175);
+        }
+        else if (tx<-3)
+        {
+            turnTurret.setPower(-0.175);
+        }
+        else
+        {
+            turnTurret.setPower(0);
+        }
+    }
+
+    private double calculateDistance(double ty) {
+        // Camera configuration (adjust these values)
+        double cameraHeightM = 0.25;      // Height of camera from ground in meters
+        double tagHeightM = 0.75;         // Height of AprilTag from ground
+        double cameraMountPitchDeg = 25.0; // Camera angle from horizontal
+
+        // Calculate distance using trigonometry
+        double angleToTargetRadians = Math.toRadians(cameraMountPitchDeg + ty);
+        return (tagHeightM - cameraHeightM) / Math.tan(angleToTargetRadians);
+    }
+    private void setTurretAngle(double dist)
+    {
+        if (dist>2)
+        {
+            angleTurret0.setPosition(0.03);
+            angleTurret1.setPosition(0.97);
+        }
+        else if (dist>1.5)
+        {
+            angleTurret0.setPosition(0.06);
+            angleTurret1.setPosition(0.94);
+        }
+        else if (dist>1)
+        {
+            angleTurret0.setPosition(0.1);
+            angleTurret1.setPosition(0.9);
+        }
+        else if (dist>0.5)
+        {
+            angleTurret0.setPosition(0.14);
+            angleTurret1.setPosition(0.86);
+        }
+        else if (dist<0.5){
+            angleTurret0.setPosition(0.18);
+            angleTurret1.setPosition(0.82);
+        }
+        else {
+            angleTurret0.setPosition(0.06);
+            angleTurret1.setPosition(0.94);
+        }
+    }
+
+    private void setTurretVelocity(double dist)
+    {
+        double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 1264.5;
+        turret.setVelocity((int)Math.round(velocity));
+        telemetry.addData("velocity", (int)Math.round(velocity));
+        telemetry.update();
     }
 }
