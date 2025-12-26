@@ -1,30 +1,48 @@
 package org.firstinspires.ftc.teamcode.LAVA;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.ColorRangeSensor;
+import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 //RED APRILTAG LIMELIGHT
-@TeleOp(group = "AAA", name ="laveTele")
+@TeleOp(group = "AAA", name ="lavaTele")
 public class lavaTele extends LinearOpMode {
     private Follower follower;
+    private static final double MIN_COLOR_THRESHOLD = 0.5; // 50% of total area
+    private boolean wasColorDetected = false;
+    private boolean intakeSequenceActive= false;
+    private boolean intakeSequenceComplete = true;
+    private int ballcount=0;
+    //private boolean intakeSlow=false;
+    private int intakeStep=0;
+    private Limelight3A limelight;
+    private int spinPos;
+    private boolean on = true;
     public ElapsedTime runtime = new ElapsedTime();
     boolean popSequenceActive = false;
     boolean popSequenceComplete = true;
     long sequenceStartTime = 0;
     int popSequenceStep = 0;
+    int shootStep=0;
+    boolean shootSequenceActive = false;
+    boolean shootSequenceComplete = true;
     private final Pose startPose = new Pose(0, 0, 0);
+    private RevColorSensorV3 colorBack, color0, color1;
 
-    Servo turnTurret, angleTurret0, angleTurret1, popUp;
-    CRServo spinny;
-    DcMotorEx turret, intake, transferR, transferL, frontRight, frontLeft, backRight, backLeft;
+    Servo angleTurret0, angleTurret1, popUp;
+    DcMotorEx turret, intake, frontRight, frontLeft, backRight, backLeft, spindexer, turnTurret;
     boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
 
     @Override
@@ -41,32 +59,269 @@ public class lavaTele extends LinearOpMode {
         backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
 
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+
         // Follower after constants are set
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startPose);
 
         //other motor init
         intake = hardwareMap.get(DcMotorEx.class, "intake");
-        transferR = hardwareMap.get(DcMotorEx.class, "transferR");
-        transferL = hardwareMap.get(DcMotorEx.class, "transferL");
-        turret=hardwareMap.get(DcMotorEx.class, "turret");
-        turret.setDirection(DcMotorSimple.Direction.REVERSE);
-        turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        turret = hardwareMap.get(DcMotorEx.class, "turret");
+        turret.setDirection(DcMotorSimple.Direction.FORWARD);
+        turret.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        turret.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
+        turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
+        spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
+        color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
+        color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+
 
         //servo init
         popUp = hardwareMap.get(Servo.class, "popup");
-        popUp.setPosition(0.14);
+        popUp.setPosition(1);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.135);
+        angleTurret0.setPosition(0.06);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.865);
-        spinny = hardwareMap.get(CRServo.class, "spinny");
+        angleTurret1.setPosition(0.94);
 
         waitForStart();
         follower.startTeleopDrive();
         runtime.reset();
         while (opModeIsActive()) {
             //BASE TELE W RED LIMELIGHT
+            //drive
+            double y = -gamepad2.left_stick_y; // Remember, this is reversed!
+            double x = -gamepad2.left_stick_x; // this is strafing
+            double rx = gamepad2.right_stick_x; // rotate (inverted)
+            boolean aimAssist = false;
+
+            // Drive with (possibly) overridden rx
+            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+            // Note: x is negated to reverse the strafing direction
+            double leftFrontPower = (y - x + rx) / denominator;
+            double leftRearPower = (y + x + rx) / denominator;
+            double rightFrontPower = (y + x - rx) / denominator;
+            double rightRearPower = (y - x - rx) / denominator;
+
+            frontLeft.setPower(leftFrontPower);
+            backLeft.setPower(leftRearPower);
+            frontRight.setPower(rightFrontPower);
+            backRight.setPower(rightRearPower);
+
+
+
+
+
+
+
+            //Shoot macro
+            if (gamepad1.right_bumper) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                switch (shootStep) {
+                    case 0:
+                        //turret.setPower(0.6);
+                        if (elapsedTime >= 300) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        boolean isColorDetected = isTargetColorDetected();
+                        if (isColorDetected && !wasColorDetected) {
+                            // Color just detected, stop the spindexer
+                            spindexer.setPower(0);
+                            wasColorDetected = true;
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        } else if (!isColorDetected) {
+                            // No color detected, keep spinning
+                            spindexer.setPower(0.25); // Adjust power as needed
+                            wasColorDetected = false;
+                        }
+                        else if (elapsedTime >= 5000) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 2:
+                        popUp.setPosition(0.3); //ALL THE WAY UP
+                        ballcount--;
+                        if (elapsedTime >= 750) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 3:
+                        popUp.setPosition(1);
+                        //turret.setPower(0);
+                        if (elapsedTime >= 500) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 4:
+                        shootSequenceComplete = true;
+                        shootSequenceActive = false;
+                        sequenceStartTime = 0;
+                        shootStep = 0;
+                        break;
+
+                }
+                /*boolean isColorDetected = isTargetColorDetected();
+                if (isColorDetected && !wasColorDetected) {
+                    // Color just detected, stop the spindexer
+                    spinPos=spindexer.getCurrentPosition();
+                    spindexer.setPower(0);
+                    //spindexer.setTargetPosition(spinPos+150);
+                    wasColorDetected = true;
+                } else if (!isColorDetected) {
+                    // No color detected, keep spinning
+                    spindexer.setPower(0.25); // Adjust power as needed
+                    wasColorDetected = false;
+                }*/
+
+
+            }
+            else if (!gamepad1.right_bumper && !gamepad1.y){
+                wasColorDetected = false;
+                // Stop spindexer when bumper is released
+                spindexer.setPower(0);
+            }
+            else {
+                wasColorDetected = false;
+            }
+
+            if (gamepad1.b)
+            {
+                turret.setPower(0.6);
+                telemetry.addData("turret power:", turret.getPower());
+                telemetry.update();
+            }
+            else {
+                turret.setPower(0);
+            }
+
+
+
+
+            //intake
+            if (gamepad1.y) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                //ballcount=0;
+                switch (intakeStep)
+                {
+                    case 0:
+                        intake.setPower(0);
+                        spindexer.setPower(0.25);
+                        if (isTargetColorDetected())
+                        {
+                            ballcount++;
+
+                        }
+                        telemetry.addData("Ball Count:", ballcount);
+                        if (elapsedTime >= 50) {
+                            intakeStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        boolean intakeGo = intakeTimingDetection();
+                        if (intakeGo && ballcount<3)
+                        {
+                            intake.setPower(0.5);
+                            spindexer.setPower(0);
+                            wasColorDetected = true;
+                            telemetry.addData("Intake Power", intake.getPower());
+                            //telemetry.update();
+                        }
+                        if (elapsedTime >= 300) {
+                            intakeStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                            }
+                            break;
+
+                    case 2:
+                        if (isTargetColorDetected())
+                        {
+                            ballcount++;
+
+                        }
+                        telemetry.addData("Intake Power", intake.getPower());
+                        telemetry.addData("Ball Count:", ballcount);
+                        //telemetry.update();
+                        spindexer.setPower(0.25);
+                        intake.setPower(0);
+                        intakeStep++;
+                        sequenceStartTime = System.currentTimeMillis();
+                        break;
+                    case 3:
+                        intakeSequenceComplete = true;
+                        intakeSequenceActive = false;
+                        sequenceStartTime = 0;
+                        intakeStep = 0;
+                        break;
+                }
+
+            }
+            else if (!gamepad1.y && !gamepad1.right_bumper){
+                intake.setPower(0);
+                spindexer.setPower(0);
+            }
+            else {
+                intake.setPower(0);
+            }
+            if (gamepad1.x)
+            {
+                intakeTimingDetection();
+            }
+
+
+
         }
+    }
+    private boolean isTargetColorDetected() {
+        // Get raw color values
+        int red = colorBack.red();
+        int green = colorBack.green();
+        int blue = colorBack.blue();
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
+
+        if ((colors.blue)> colors.green && colors.blue>0.0015)
+        {
+            telemetry.addData("Color seen:", "purple");
+            telemetry.addData("Color seen:", colors.blue);
+            telemetry.update();
+            return true;
+
+        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
+
+            telemetry.addData("Color seen:", "green");
+            telemetry.addData("Color seen:", colors.green);
+            telemetry.update();
+            return true;
+        }
+        telemetry.addData("Color seen:", "No Color");
+        telemetry.update();
+        return false;
+
+    }
+    private boolean intakeTimingDetection()
+    {
+        NormalizedRGBA intakeColors = colorBack.getNormalizedColors();
+        if (intakeColors.red>intakeColors.green && intakeColors.red>intakeColors.blue)
+        {
+            telemetry.addData("Color seen:", "red");
+            telemetry.addData("Color seen:", intakeColors.red);
+            telemetry.update();
+            return true;
+        }
+        telemetry.addData("Color seen:", "No Color");
+        telemetry.update();
+        return false;
     }
 }

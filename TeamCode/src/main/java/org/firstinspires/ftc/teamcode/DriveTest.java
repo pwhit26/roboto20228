@@ -11,11 +11,17 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+
+import java.util.List;
 
 
 @TeleOp
 public class DriveTest extends LinearOpMode {
     private Follower follower;
+
+    private AprilTagProcessor apriltag;;
 
     private final Pose startPose = new Pose(0, 0, 0);
     private DcMotorEx frontRight, frontLeft, backRight, backLeft;
@@ -57,6 +63,7 @@ public class DriveTest extends LinearOpMode {
         // Follower after constants are set
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startPose);
+        apriltag = AprilTagProcessor.easyCreateWithDefaults();
 
         // Initialize Limelight
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -142,6 +149,14 @@ public class DriveTest extends LinearOpMode {
                     tyDeg = ll.getTy();
                     ta = ll.getTa();
                     llValid = ll.isValid();
+                    List<AprilTagDetection> currentDetections = apriltag.getDetections();
+                    for (AprilTagDetection detection : currentDetections) {
+                        if (detection.metadata != null) {
+                            int myAprilTagIdCode = detection.id; // This is the function you are looking for
+                            // Now you can take action based on the ID code
+                            telemetry.addData("Detected Tag ID", myAprilTagIdCode);
+                        }
+                    }
                 }
 
                 telemetry.addData("Pipeline", currentPipeline);
