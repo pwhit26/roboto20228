@@ -40,7 +40,7 @@ public class lavaTele extends LinearOpMode {
     boolean shootSequenceActive = false;
     boolean shootSequenceComplete = true;
     private final Pose startPose = new Pose(0, 0, 0);
-    private RevColorSensorV3 colorBack, color0, color1;
+    private RevColorSensorV3 colorBack, color0, color1, colorFront;
 
     Servo angleTurret0, angleTurret1, popUp;
     DcMotorEx turret, intake, frontRight, frontLeft, backRight, backLeft, spindexer, turnTurret;
@@ -59,11 +59,12 @@ public class lavaTele extends LinearOpMode {
         frontLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        backLeft.setDirection(DcMotorSimple.Direction.FORWARD);
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
         // Follower after constants are set
-        follower = Constants.createFollower(hardwareMap);
+        follower = Constants.createFollower(hardwareMap); //Haolin was here lol
         follower.setStartingPose(startPose);
 
         //other motor init
@@ -80,6 +81,7 @@ public class lavaTele extends LinearOpMode {
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
         color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+        colorFront=hardwareMap.get(RevColorSensorV3.class, "colorFront");
 
 
         //servo init
@@ -118,7 +120,7 @@ public class lavaTele extends LinearOpMode {
             double rightRearPower = (y - x - rx) / denominator;
 
             frontLeft.setPower(leftFrontPower);
-            backLeft.setPower(leftRearPower);
+            backLeft.setPower(-leftRearPower);
             frontRight.setPower(rightFrontPower);
             backRight.setPower(rightRearPower);
 
@@ -134,7 +136,7 @@ public class lavaTele extends LinearOpMode {
                     double ta = ll.getTa();
 
                     angleAdjust(tx);
-                    double dist=calculateDistance(ty);
+                    double dist=calculateDistance(ty, tx);
                     setTurretAngle(dist);
                     if (gamepad1.b)
                     {
@@ -360,7 +362,7 @@ public class lavaTele extends LinearOpMode {
                         break;
                     case 1:
                         boolean intakeGo = intakeTimingDetection();
-                        if (intakeGo)
+                        if (intakeGo && !isSpotTaken())
                         {
                             intake.setPower(0.6);
                             spindexer.setPower(0);
@@ -421,7 +423,6 @@ public class lavaTele extends LinearOpMode {
         int green = colorBack.green();
         int blue = colorBack.blue();
         NormalizedRGBA colors = colorBack.getNormalizedColors();
-
         if ((colors.blue)> colors.green && colors.blue>0.0015)
         {
             telemetry.addData("Color seen:", "purple");
@@ -459,11 +460,11 @@ public class lavaTele extends LinearOpMode {
     {
         if (tx>3)
         {
-            turnTurret.setPower(0.17);
+            turnTurret.setPower(0.18);
         }
         else if (tx<-3)
         {
-            turnTurret.setPower(-0.17);
+            turnTurret.setPower(-0.18);
         }
         else
         {
@@ -471,16 +472,7 @@ public class lavaTele extends LinearOpMode {
         }
     }
 
-    private double calculateDistance(double ty) {
-        // Camera configuration (adjust these values)
-        double cameraHeightM = 0.25;      // Height of camera from ground in meters
-        double tagHeightM = 0.75;         // Height of AprilTag from ground
-        double cameraMountPitchDeg = 25.0; // Camera angle from horizontal
 
-        // Calculate distance using trigonometry
-        double angleToTargetRadians = Math.toRadians(cameraMountPitchDeg + ty);
-        return (tagHeightM - cameraHeightM) / Math.tan(angleToTargetRadians);
-    }
     private void setTurretAngle(double dist)
     {
         if (dist>2)
@@ -495,17 +487,17 @@ public class lavaTele extends LinearOpMode {
         }
         else if (dist>1)
         {
+            angleTurret0.setPosition(0.08);
+            angleTurret1.setPosition(0.92);
+        }
+        else if (dist>0.75)
+        {
             angleTurret0.setPosition(0.1);
             angleTurret1.setPosition(0.9);
         }
-        else if (dist>0.5)
-        {
-            angleTurret0.setPosition(0.14);
-            angleTurret1.setPosition(0.86);
-        }
-        else if (dist<0.5){
-            angleTurret0.setPosition(0.18);
-            angleTurret1.setPosition(0.82);
+        else if (dist<=0.5){
+            angleTurret0.setPosition(0.12);
+            angleTurret1.setPosition(0.88);
         }
         else {
             angleTurret0.setPosition(0.06);
@@ -515,7 +507,7 @@ public class lavaTele extends LinearOpMode {
 
     private void setTurretVelocity(double dist)
     {
-        double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 1264.5;
+        double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 860;
         turret.setVelocity((int)Math.round(velocity));
         telemetry.addData("velocity", (int)Math.round(velocity));
         telemetry.update();
@@ -551,5 +543,54 @@ public class lavaTele extends LinearOpMode {
         telemetry.addData("Color seen:", "No Color");
         telemetry.update();
         return false;
+    }
+    private boolean isSpotTaken() {
+        // Get raw color values
+        int red = colorFront.red();
+        int green = colorFront.green();
+        int blue = colorFront.blue();
+        NormalizedRGBA colors = colorFront.getNormalizedColors();
+
+        if ((colors.blue)> colors.green && colors.blue>0.0015)
+        {
+            telemetry.addData("Color seen:", "purple");
+            telemetry.addData("Color seen:", colors.blue);
+            telemetry.update();
+            return true;
+
+        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
+
+            telemetry.addData("Color seen:", "green");
+            telemetry.addData("Color seen:", colors.green);
+            telemetry.update();
+            return true;
+        }
+        telemetry.addData("Color seen:", "No Color");
+        telemetry.update();
+        return false;
+
+    }
+    private double calculateDistance(double ty, double tx) {
+        // Camera configuration (adjust these values)
+        double cameraHeightM = 0.3;      // Height of camera from ground in meters
+        double tagHeightM = 0.75;         // Height of AprilTag from ground
+        double cameraMountPitchDeg = 20.0; // Camera angle from horizontal
+
+        double thetaV = Math.toRadians(cameraMountPitchDeg + ty);
+        if (Math.abs(Math.cos(thetaV)) > 1e-3) {
+            double forwardZ = (tagHeightM - cameraHeightM) / Math.tan(thetaV);
+            double thetaH = Math.toRadians(tx);
+            double lateralX = forwardZ * Math.tan(thetaH);
+            double verticalY = (tagHeightM - cameraHeightM);
+            double euclid = Math.sqrt(lateralX * lateralX + verticalY * verticalY + forwardZ * forwardZ);
+
+            // Calculate distance using trigonometry
+            return forwardZ;
+
+        }
+        else {
+            return 0;
+        }
+
     }
 }
