@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
@@ -19,12 +20,13 @@ public class TestRPM extends LinearOpMode {
     private Limelight3A limelight;
     private double cameraHeightM = 0.25;      // set your camera height (m)
     private double tagHeightM = 0.80;         // set your tag center height (m)
-    private double cameraMountPitchDeg = 25.0;
+    private double cameraMountPitchDeg = 20.0;
     private double ticks = 28;
     private double rpm = 0;
     private double velocity;
     private boolean rBumpLast, lBumpLast;
     private double current;
+    Servo angleTurret0, angleTurret1;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -41,9 +43,13 @@ public class TestRPM extends LinearOpMode {
         backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         // Follower after constants are set
         follower = Constants.createFollower(hardwareMap);
+        angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
+        angleTurret0.setPosition(0.06);
+        angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
+        angleTurret1.setPosition(0.94);
 
         turret= hardwareMap.get(DcMotorEx.class, "turret");
-        turret.setDirection(DcMotorSimple.Direction.REVERSE);
+        turret.setDirection(DcMotorSimple.Direction.FORWARD);
         turret.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         turret.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -119,6 +125,8 @@ public class TestRPM extends LinearOpMode {
                 tyDeg = ll.getTy();
                 ta = ll.getTa();
                 llValid = ll.isValid();
+                double dist=calculateDistance(txDeg, tyDeg);
+                setTurretAngle(dist);
             }
 
 
@@ -141,4 +149,59 @@ public class TestRPM extends LinearOpMode {
 
 
         }
-}}
+
+}
+    private void setTurretAngle(double dist)
+    {
+        if (dist>2)
+        {
+            angleTurret0.setPosition(0.03);
+            angleTurret1.setPosition(0.97);
+        }
+        else if (dist>1.5)
+        {
+            angleTurret0.setPosition(0.035);
+            angleTurret1.setPosition(0.965);
+        }
+        else if (dist>1)
+        {
+            angleTurret0.setPosition(0.06);
+            angleTurret1.setPosition(0.94);
+        }
+        else if (dist>0.75)
+        {
+            angleTurret0.setPosition(0.09);
+            angleTurret1.setPosition(0.91);
+        }
+        else if (dist<=0.5){
+            angleTurret0.setPosition(0.1);
+            angleTurret1.setPosition(0.9);
+        }
+        else {
+            angleTurret0.setPosition(0.06);
+            angleTurret1.setPosition(0.94);
+        }
+    }
+    private double calculateDistance(double ty, double tx) {
+        // Camera configuration (adjust these values)
+        double cameraHeightM = 0.3;      // Height of camera from ground in meters
+        double tagHeightM = 0.75;         // Heig   ht of AprilTag from ground
+        double cameraMountPitchDeg = 20.0; // Camera angle from horizontal
+
+        double thetaV = Math.toRadians(cameraMountPitchDeg + ty);
+        if (Math.abs(Math.cos(thetaV)) > 1e-3) {
+            double forwardZ = (tagHeightM - cameraHeightM) / Math.tan(thetaV);
+            double thetaH = Math.toRadians(tx);
+            double lateralX = forwardZ * Math.tan(thetaH);
+            double verticalY = (tagHeightM - cameraHeightM);
+            double euclid = Math.sqrt(lateralX * lateralX + verticalY * verticalY + forwardZ * forwardZ);
+
+            // Calculate distance using trigonometry
+            return forwardZ;
+
+        }
+        else {
+            return 0;
+        }
+
+    }}

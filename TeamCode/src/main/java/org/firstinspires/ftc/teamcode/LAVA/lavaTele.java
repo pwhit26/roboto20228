@@ -41,6 +41,8 @@ public class lavaTele extends LinearOpMode {
     boolean shootSequenceComplete = true;
     private final Pose startPose = new Pose(0, 0, 0);
     private RevColorSensorV3 colorBack, color0, color1, colorFront;
+    private double txDeg, tyDeg;
+    private double v;
 
     Servo angleTurret0, angleTurret1, popUp;
     DcMotorEx turret, intake, frontRight, frontLeft, backRight, backLeft, spindexer, turnTurret;
@@ -134,6 +136,8 @@ public class lavaTele extends LinearOpMode {
                     double tx = ll.getTx();
                     double ty = ll.getTy();
                     double ta = ll.getTa();
+                    txDeg=tx;
+                    tyDeg=ty;
 
                     angleAdjust(tx);
                     double dist=calculateDistance(ty, tx);
@@ -190,8 +194,8 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 2:
-                        popUp.setPosition(0.3); //ALL THE WAY UP
-                        ballcount--;
+                            popUp.setPosition(0.3); //ALL THE WAY UP
+                            ballcount--;
                         if (elapsedTime >= 750) {
                             shootStep++;
                             sequenceStartTime = System.currentTimeMillis();
@@ -241,8 +245,10 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 1:
-                        popUp.setPosition(0.3); //ALL THE WAY UP
-                        ballcount--;
+
+
+                            popUp.setPosition(0.3); //ALL THE WAY UP
+                            ballcount--;
                         if (elapsedTime >= 750) {
                             shootStep++;
                             sequenceStartTime = System.currentTimeMillis();
@@ -290,8 +296,9 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 1:
-                        popUp.setPosition(0.3); //ALL THE WAY UP
-                        ballcount--;
+
+                            popUp.setPosition(0.3); //ALL THE WAY UP
+                            ballcount--;
                         if (elapsedTime >= 750) {
                             shootStep++;
                             sequenceStartTime = System.currentTimeMillis();
@@ -364,13 +371,13 @@ public class lavaTele extends LinearOpMode {
                         boolean intakeGo = intakeTimingDetection();
                         if (intakeGo && !isSpotTaken())
                         {
-                            intake.setPower(0.6);
+                            intake.setPower(0.625);
                             spindexer.setPower(0);
                             wasColorDetected = true;
                             telemetry.addData("Intake Power", intake.getPower());
                             //telemetry.update();
                         }
-                        if (elapsedTime >= 350) {
+                        if (elapsedTime >= 390) {
                             intakeStep++;
                             sequenceStartTime = System.currentTimeMillis();
                             }
@@ -399,7 +406,11 @@ public class lavaTele extends LinearOpMode {
                 }
 
             }
-            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right){
+            else if (gamepad1.a)
+            {
+                intake.setPower(-0.6);
+            }
+            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a){
                 intake.setPower(0);
                 spindexer.setPower(0);
             }
@@ -482,22 +493,22 @@ public class lavaTele extends LinearOpMode {
         }
         else if (dist>1.5)
         {
-            angleTurret0.setPosition(0.06);
-            angleTurret1.setPosition(0.94);
+            angleTurret0.setPosition(0.035);
+            angleTurret1.setPosition(0.965);
         }
         else if (dist>1)
         {
-            angleTurret0.setPosition(0.08);
-            angleTurret1.setPosition(0.92);
+            angleTurret0.setPosition(0.06);
+            angleTurret1.setPosition(0.94);
         }
         else if (dist>0.75)
         {
-            angleTurret0.setPosition(0.1);
-            angleTurret1.setPosition(0.9);
+            angleTurret0.setPosition(0.09);
+            angleTurret1.setPosition(0.91);
         }
         else if (dist<=0.5){
-            angleTurret0.setPosition(0.12);
-            angleTurret1.setPosition(0.88);
+            angleTurret0.setPosition(0.1);
+            angleTurret1.setPosition(0.9);
         }
         else {
             angleTurret0.setPosition(0.06);
@@ -507,7 +518,9 @@ public class lavaTele extends LinearOpMode {
 
     private void setTurretVelocity(double dist)
     {
-        double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 860;
+        //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
+        double velocity = 271*(dist) + 1068;
+        v = velocity;
         turret.setVelocity((int)Math.round(velocity));
         telemetry.addData("velocity", (int)Math.round(velocity));
         telemetry.update();
@@ -592,5 +605,9 @@ public class lavaTele extends LinearOpMode {
             return 0;
         }
 
+    }
+    private boolean shooterReady(double velocity){
+        double rpmTolerance = 25;
+        return (Math.abs(turret.getVelocity() - velocity) < rpmTolerance);
     }
 }
