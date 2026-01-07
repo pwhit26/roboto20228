@@ -1,0 +1,570 @@
+package TeamCode;
+import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.Pose;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.hardware.rev.RevColorSensorV3;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.ColorRangeSensor;
+import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
+import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+
+//RED APRILTAG LIMELIGHT
+@TeleOp(group = "AAA", name ="lavaTele")
+public class MAYBEtele extends LinearOpMode {
+    private Follower follower;
+    private static final double MIN_COLOR_THRESHOLD = 0.5; // 50% of total area
+    private boolean wasColorDetected = false;
+    private boolean intakeSequenceActive= false;
+    private boolean intakeSequenceComplete = true;
+    private int ballcount=0;
+    //private boolean intakeSlow=false;
+    private int intakeStep=0;
+    private Limelight3A limelight;
+    private int spinPos;
+    private boolean on = true;
+    public ElapsedTime runtime = new ElapsedTime();
+    boolean popSequenceActive = false;
+    boolean popSequenceComplete = true;
+    long sequenceStartTime = 0;
+    int popSequenceStep = 0;
+    int shootStep=0;
+    boolean shootSequenceActive = false;
+    boolean shootSequenceComplete = true;
+    private final Pose startPose = new Pose(0, 0, 0);
+    private RevColorSensorV3 colorBack, color0, color1;
+
+    Servo angleTurret0, angleTurret1, popUp;
+    DcMotorEx turret, intake, frontRight, frontLeft, backRight, backLeft, spindexer, turnTurret;
+    boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
+
+    @Override
+    public void runOpMode() throws InterruptedException {
+        //drive motor init
+        frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
+        frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRight = hardwareMap.get(DcMotorEx.class, "rightBack");
+        backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        backRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontLeft = hardwareMap.get(DcMotorEx.class, "leftFront");
+        frontLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
+        backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+
+        // Follower after constants are set
+        follower = Constants.createFollower(hardwareMap);
+        follower.setStartingPose(startPose);
+
+        //other motor init
+        intake = hardwareMap.get(DcMotorEx.class, "intake");
+
+        turret = hardwareMap.get(DcMotorEx.class, "turret");
+        turret.setDirection(DcMotorSimple.Direction.FORWARD);
+        turret.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        turret.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
+        turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
+        spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
+        color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
+        color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+
+
+        //servo init
+        popUp = hardwareMap.get(Servo.class, "popup");
+        popUp.setPosition(1);
+        angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
+        angleTurret0.setPosition(0.06);
+        angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
+        angleTurret1.setPosition(0.94);
+
+        if (limelight != null) {
+            limelight.pipelineSwitch(1);  // Changed to pipeline 0 for AprilTag
+            limelight.start();
+            telemetry.addData("Limelight", "Initialized - Pipeline: %d", 1);
+        } else {
+            telemetry.addData("Limelight", "Not found in hardware map!");
+        }
+
+        waitForStart();
+        follower.startTeleopDrive();
+        runtime.reset();
+
+        while (opModeIsActive()) {
+            //BASE TELE W RED LIMELIGHT
+            //drive
+            double y = -gamepad2.left_stick_y; // Remember, this is reversed!
+            double x = -gamepad2.left_stick_x; // this is strafing
+            double rx = gamepad2.right_stick_x; // rotate (inverted)
+            boolean aimAssist = false;
+
+            // Drive with (possibly) overridden rx
+            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+            // Note: x is negated to reverse the strafing direction
+            double leftFrontPower = (y - x + rx) / denominator;
+            double leftRearPower = (y + x + rx) / denominator;
+            double rightFrontPower = (y + x - rx) / denominator;
+            double rightRearPower = (y - x - rx) / denominator;
+
+            frontLeft.setPower(leftFrontPower);
+            backLeft.setPower(leftRearPower);
+            frontRight.setPower(rightFrontPower);
+            backRight.setPower(rightRearPower);
+
+            if (limelight!=null)
+            {
+                LLResult ll = limelight.getLatestResult();
+                telemetry.addData("Limelight", "Got result: %s", ll != null ? "Valid" : "Null");
+
+                if (ll != null) {
+                    boolean isValid = ll.isValid();
+                    double tx = ll.getTx();
+                    double ty = ll.getTy();
+                    double ta = ll.getTa();
+
+                    angleAdjust(tx);
+                    double dist=calculateDistance(ty);
+                    setTurretAngle(dist);
+                    if (gamepad1.b)
+                    {
+                        setTurretVelocity(dist);
+                    }
+                    else
+                    {
+                        turret.setVelocity(0);
+                    }
+
+                    telemetry.addData("LL Valid", isValid);
+                    //telemetry.addData("AprilTag ID", tid);
+                    telemetry.addData("TX/TY/TA", "%.2f / %.2f / %.2f", tx, ty, ta);
+                    telemetry.addData("Distance from Apriltag/Angle 0/Angle1:", "%.2f / %.2f / %.2f", dist, angleTurret0.getPosition(), angleTurret1.getPosition());
+                }
+            }
+
+            if (gamepad1.left_bumper && (limelight==null || limelight.getLatestResult()==null))
+            {
+                turret.setTargetPosition(0);
+            }
+
+            //Shoot macro
+            if (gamepad1.right_bumper) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                telemetry.addData("Shoot Order:", "General Shoot");
+                switch (shootStep) {
+                    case 0:
+                        //turret.setPower(0.6);
+                        if (elapsedTime >= 300) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        boolean isColorDetected = isTargetColorDetected();
+                        if (isColorDetected && !wasColorDetected) {
+                            // Color just detected, stop the spindexer
+                            spindexer.setPower(0);
+                            wasColorDetected = true;
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        } else if (!isColorDetected) {
+                            // No color detected, keep spinning
+                            spindexer.setPower(0.25); // Adjust power as needed
+                            wasColorDetected = false;
+                        }
+                        else if (elapsedTime >= 5000) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 2:
+                        popUp.setPosition(0.3); //ALL THE WAY UP
+                        ballcount--;
+                        if (elapsedTime >= 750) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 3:
+                        popUp.setPosition(1);
+                        //turret.setPower(0);
+                        if (elapsedTime >= 500) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 4:
+                        shootSequenceComplete = true;
+                        shootSequenceActive = false;
+                        sequenceStartTime = 0;
+                        shootStep = 0;
+                        break;
+
+                }
+            }
+
+            else if (gamepad1.dpad_left) //Just green
+            {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                telemetry.addData("Shoot Order:", "Green");
+                switch (shootStep)
+                {
+                    case 0:
+                        boolean isGreenDetected = greenDetect();
+                        if (isGreenDetected && !wasColorDetected)
+                        {
+                            spindexer.setPower(0);
+                            wasColorDetected = true;
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        else if (!isGreenDetected)
+                        {
+                            spindexer.setPower(0.25);
+                            wasColorDetected=false;
+                        }
+                        else if (elapsedTime >= 2000) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        popUp.setPosition(0.3); //ALL THE WAY UP
+                        ballcount--;
+                        if (elapsedTime >= 750) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 2:
+                        popUp.setPosition(1);
+                        //turret.setPower(0);
+                        if (elapsedTime >= 500) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 3:
+                        shootSequenceComplete = true;
+                        shootSequenceActive = false;
+                        sequenceStartTime = 0;
+                        shootStep = 0;
+                        break;
+                }
+            }
+            else if (gamepad1.dpad_right) //just purple
+            {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                telemetry.addData("Shoot Order:", "Purple");
+                switch (shootStep)
+                {
+                    case 0:
+                        boolean isPurpleDetected = purpleDetect();
+                        if (isPurpleDetected && !wasColorDetected)
+                        {
+                            spindexer.setPower(0);
+                            wasColorDetected = true;
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        else if (!isPurpleDetected)
+                        {
+                            spindexer.setPower(0.25);
+                            wasColorDetected=false;
+                        }
+                        else if (elapsedTime >= 2000) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        popUp.setPosition(0.3); //ALL THE WAY UP
+                        ballcount--;
+                        if (elapsedTime >= 750) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 2:
+                        popUp.setPosition(1);
+                        //turret.setPower(0);
+                        if (elapsedTime >= 500) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 3:
+                        shootSequenceComplete = true;
+                        shootSequenceActive = false;
+                        sequenceStartTime = 0;
+                        shootStep = 0;
+                        break;
+                }
+
+            }
+            else if (!gamepad1.right_bumper && !gamepad1.y && !gamepad1.dpad_left && !gamepad1.dpad_right){
+                wasColorDetected = false;
+                // Stop spindexer when bumper is released
+                spindexer.setPower(0);
+                shootStep=0;
+            }
+            else {
+                wasColorDetected = false;
+            }
+
+
+
+            //Turret Power
+            if (gamepad1.b && (limelight==null || limelight.getLatestResult()==null))
+            {
+                turret.setPower(0.6);
+                telemetry.addData("turret power:", turret.getPower());
+                //telemetry.update();
+            }
+            else {
+                turret.setPower(0);
+            }
+
+
+
+
+//intake
+            if (gamepad1.y) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+
+                // Check if ball is already present before starting sequence
+                if (intakeStep == 0 && isTargetColorDetected()) {
+                    // Ball already present, don't start intake sequence
+                    intake.setPower(0);
+                    spindexer.setPower(0);
+                    telemetry.addData("Intake Status", "Ball already present - waiting");
+                    telemetry.update();
+                } else {
+                    // No ball detected, proceed with intake sequence
+                    switch (intakeStep)
+                    {
+                        case 0:
+                            ballcount=0;
+                            intake.setPower(0);
+                            spindexer.setPower(0.175);
+                            if (isTargetColorDetected())
+                            {
+                                ballcount++;
+                            }
+                            telemetry.addData("Ball Count:", ballcount);
+                            if (elapsedTime >= 50) {
+                                intakeStep++;
+                                sequenceStartTime = System.currentTimeMillis();
+                            }
+                            break;
+                        case 1:
+                            boolean intakeGo = intakeTimingDetection();
+                            if (intakeGo)
+                            {
+                                intake.setPower(0.6);
+                                spindexer.setPower(0);
+                                wasColorDetected = true;
+                                telemetry.addData("Intake Power", intake.getPower());
+                                telemetry.update();
+                            }
+                            if (elapsedTime >= 350) {
+                                intakeStep++;
+                                sequenceStartTime = System.currentTimeMillis();
+                            }
+                            break;
+
+                        case 2:
+                            if (isTargetColorDetected())
+                            {
+                                ballcount++;
+                            }
+                            telemetry.addData("Intake Power", intake.getPower());
+                            telemetry.addData("Ball Count:", ballcount);
+                            telemetry.update();
+                            spindexer.setPower(0.175);
+                            intake.setPower(0);
+                            intakeStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                            break;
+                        case 3:
+                            // Check if ball is now present before completing
+                            if (isTargetColorDetected()) {
+                                // Ball successfully intaked, complete sequence
+                                intakeSequenceComplete = true;
+                                intakeSequenceActive = false;
+                                sequenceStartTime = 0;
+                                intakeStep = 0;
+                            } else {
+                                // No ball detected, reset and try again
+                                intakeStep = 0;
+                                sequenceStartTime = System.currentTimeMillis();
+                            }
+                            break;
+                    }
+                }
+            }
+            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right){
+                intake.setPower(0);
+                spindexer.setPower(0);
+            }
+            else {
+                intake.setPower(0);
+            }
+            if (gamepad1.x)
+            {
+                intakeTimingDetection();
+            }
+
+            telemetry.update();
+        }
+    }
+    private boolean isTargetColorDetected() {
+        // Get raw color values
+        int red = colorBack.red();
+        int green = colorBack.green();
+        int blue = colorBack.blue();
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
+
+        if ((colors.blue)> colors.green && colors.blue>0.0015)
+        {
+            telemetry.addData("Color seen:", "purple");
+            telemetry.addData("Color seen:", colors.blue);
+            telemetry.update();
+            return true;
+
+        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
+
+            telemetry.addData("Color seen:", "green");
+            telemetry.addData("Color seen:", colors.green);
+            telemetry.update();
+            return true;
+        }
+        telemetry.addData("Color seen:", "No Color");
+        telemetry.update();
+        return false;
+
+    }
+    private boolean intakeTimingDetection()
+    {
+        NormalizedRGBA intakeColors = colorBack.getNormalizedColors();
+        if (intakeColors.red>intakeColors.green && intakeColors.red>intakeColors.blue)
+        {
+            telemetry.addData("Color seen:", "red");
+            telemetry.addData("Color seen:", intakeColors.red);
+            telemetry.update();
+            return true;
+        }
+        telemetry.addData("Color seen:", "No Color");
+        telemetry.update();
+        return false;
+    }
+    private void angleAdjust(double tx)
+    {
+        if (tx>3)
+        {
+            turnTurret.setPower(0.17);
+        }
+        else if (tx<-3)
+        {
+            turnTurret.setPower(-0.17);
+        }
+        else
+        {
+            turnTurret.setPower(0);
+        }
+    }
+
+    private double calculateDistance(double ty) {
+        // Camera configuration (adjust these values)
+        double cameraHeightM = 0.25;      // Height of camera from ground in meters
+        double tagHeightM = 0.75;         // Height of AprilTag from ground
+        double cameraMountPitchDeg = 25.0; // Camera angle from horizontal
+
+        // Calculate distance using trigonometry
+        double angleToTargetRadians = Math.toRadians(cameraMountPitchDeg + ty);
+        return (tagHeightM - cameraHeightM) / Math.tan(angleToTargetRadians);
+    }
+    private void setTurretAngle(double dist)
+    {
+        if (dist>2)
+        {
+            angleTurret0.setPosition(0.03);
+            angleTurret1.setPosition(0.97);
+        }
+        else if (dist>1.5)
+        {
+            angleTurret0.setPosition(0.06);
+            angleTurret1.setPosition(0.94);
+        }
+        else if (dist>1)
+        {
+            angleTurret0.setPosition(0.1);
+            angleTurret1.setPosition(0.9);
+        }
+        else if (dist>0.5)
+        {
+            angleTurret0.setPosition(0.14);
+            angleTurret1.setPosition(0.86);
+        }
+        else if (dist<0.5){
+            angleTurret0.setPosition(0.18);
+            angleTurret1.setPosition(0.82);
+        }
+        else {
+            angleTurret0.setPosition(0.06);
+            angleTurret1.setPosition(0.94);
+        }
+    }
+
+    private void setTurretVelocity(double dist)
+    {
+        double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 1264.5;
+        turret.setVelocity((int)Math.round(velocity));
+        telemetry.addData("velocity", (int)Math.round(velocity));
+        telemetry.update();
+    }
+
+    private boolean greenDetect()
+    {
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
+        if(colors.green>(colors.blue) && colors.green>0.0015) {
+
+            telemetry.addData("Color seen:", "green");
+            telemetry.addData("Color seen:", colors.green);
+            telemetry.update();
+            return true;
+        }
+        telemetry.addData("Color seen:", "No Color");
+        telemetry.update();
+        return false;
+
+    }
+    private boolean purpleDetect()
+    {
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
+
+        if ((colors.blue)> colors.green && colors.blue>0.0015)
+        {
+            telemetry.addData("Color seen:", "purple");
+            telemetry.addData("Color seen:", colors.blue);
+            telemetry.update();
+            return true;
+
+        }
+        telemetry.addData("Color seen:", "No Color");
+        telemetry.update();
+        return false;
+    }
+}
+
