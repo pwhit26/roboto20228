@@ -12,8 +12,8 @@ public class ServoTuner extends LinearOpMode {
     private Servo angleTurret0, angleTurret1;
     public DcMotorEx turret;
     private boolean rBumpLast, lBumpLast, aLast, aPressable;
-    double skib1 = 0.5;
-    double skib2 = 0.5;
+    double skib0 = 0;
+    double skib1 = 1;
     long startTime = 0;
     @Override
     public void runOpMode() throws InterruptedException {
@@ -24,34 +24,34 @@ public class ServoTuner extends LinearOpMode {
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
+        angleTurret0 = hardwareMap.get(Servo.class, "popup");
+        //angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
         angleTurret0.setPosition(skib1);
-        angleTurret1.setPosition(skib2);
+        //angleTurret1.setPosition(skib1);
         waitForStart();
         while (opModeIsActive()){
             long elapsedTime = System.currentTimeMillis() - startTime;
             if (gamepad1.right_bumper && !rBumpLast) {
-                skib1 = skib1 + 0.01;
-                skib2 = skib2 - 0.01;
+                skib0 = skib0 + 0.01;
+                skib1 = skib1 - 0.01;
                 startTime = System.currentTimeMillis();
             }
             rBumpLast = gamepad1.right_bumper;
 
             if (gamepad1.left_bumper && !lBumpLast) {
-                skib1 = skib1 - 0.01;
-                skib2 = skib2 + 0.01;
+                skib0 = skib0 - 0.01;
+                skib1 = skib1 + 0.01;
             }
             lBumpLast = gamepad1.left_bumper;
 
             angleTurret0.setPosition(skib1);
-            angleTurret1.setPosition(skib2);
+            //angleTurret1.setPosition(skib1);
             
+            telemetry.addLine("" + skib0);
             telemetry.addLine("" + skib1);
-            telemetry.addLine("" + skib2);
             telemetry.update();
 
-            if (gamepad1.a && !aLast) {
+           /* if (gamepad1.a && !aLast) {
                 aPressable = !aPressable;
             }
             if (aPressable) {
@@ -60,8 +60,8 @@ public class ServoTuner extends LinearOpMode {
             else {
                 turret.setPower(0);
             }
-            aLast = gamepad1.a;
-            telemetry.addData("Turret Power", turret.getCurrentPosition()/elapsedTime);
+            aLast = gamepad1.a;*/
+            //telemetry.addData("Turret Power", turret.getCurrentPosition()/elapsedTime);
             telemetry.update();
         }
     }

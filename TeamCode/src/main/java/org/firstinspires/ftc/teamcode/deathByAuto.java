@@ -51,6 +51,7 @@ public class deathByAuto extends OpMode {
         transferL = hardwareMap.get(DcMotorEx.class, "transferL");
         turret=hardwareMap.get(DcMotorEx.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.REVERSE);
+        turret.setVelocity((3000/60.0)*28);
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
