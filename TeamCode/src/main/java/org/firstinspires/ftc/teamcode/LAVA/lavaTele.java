@@ -53,15 +53,16 @@ public class lavaTele extends LinearOpMode {
         //drive motor init
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRight.setDirection(DcMotorSimple.Direction.FORWARD);
         backRight = hardwareMap.get(DcMotorEx.class, "rightBack");
         backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
         frontLeft = hardwareMap.get(DcMotorEx.class, "leftFront");
         frontLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        frontLeft.setDirection(DcMotorSimple.Direction.FORWARD);
         backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        backLeft.setDirection(DcMotorSimple.Direction.FORWARD);
+        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
@@ -122,7 +123,7 @@ public class lavaTele extends LinearOpMode {
             double rightRearPower = (y - x - rx) / denominator;
 
             frontLeft.setPower(leftFrontPower);
-            backLeft.setPower(-leftRearPower);
+            backLeft.setPower(leftRearPower);
             frontRight.setPower(rightFrontPower);
             backRight.setPower(rightRearPower);
 
@@ -194,8 +195,11 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 2:
+                        if (elapsedTime>=200)
+                        {
                             popUp.setPosition(0.43); //ALL THE WAY UP
                             ballcount--;
+                        }
                         if (elapsedTime >= 750) {
                             shootStep++;
                             sequenceStartTime = System.currentTimeMillis();
@@ -245,10 +249,12 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 1:
-
-
+                        if (elapsedTime>=200)
+                        {
                             popUp.setPosition(0.43); //ALL THE WAY UP
                             ballcount--;
+                        }
+
                         if (elapsedTime >= 750) {
                             shootStep++;
                             sequenceStartTime = System.currentTimeMillis();
@@ -296,9 +302,12 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 1:
-
+                        if (elapsedTime>=2000)
+                        {
                             popUp.setPosition(0.43); //ALL THE WAY UP
                             ballcount--;
+                        }
+
                         if (elapsedTime >= 750) {
                             shootStep++;
                             sequenceStartTime = System.currentTimeMillis();
@@ -355,7 +364,7 @@ public class lavaTele extends LinearOpMode {
                 {
                     case 0:
                         intake.setPower(0);
-                        spindexer.setPower(0.175);
+                        spindexer.setPower(0.173);
                         if (isTargetColorDetected())
                         {
                             ballcount++;
@@ -371,13 +380,13 @@ public class lavaTele extends LinearOpMode {
                         boolean intakeGo = intakeTimingDetection();
                         if (intakeGo && !isSpotTaken())
                         {
-                            intake.setPower(0.625);
+                            intake.setPower(0.63);
                             spindexer.setPower(0);
                             wasColorDetected = true;
                             telemetry.addData("Intake Power", intake.getPower());
                             //telemetry.update();
                         }
-                        if (elapsedTime >= 390) {
+                        if (elapsedTime >= 400) {
                             intakeStep++;
                             sequenceStartTime = System.currentTimeMillis();
                             }
@@ -392,7 +401,7 @@ public class lavaTele extends LinearOpMode {
                         telemetry.addData("Intake Power", intake.getPower());
                         telemetry.addData("Ball Count:", ballcount);
                         //telemetry.update();
-                        spindexer.setPower(0.175);
+                        spindexer.setPower(0.173);
                         intake.setPower(0);
                         intakeStep++;
                         sequenceStartTime = System.currentTimeMillis();
@@ -419,7 +428,7 @@ public class lavaTele extends LinearOpMode {
             }
             if (gamepad1.x)
             {
-                intakeTimingDetection();
+                unstuck();
             }
 
             telemetry.update();
@@ -488,38 +497,46 @@ public class lavaTele extends LinearOpMode {
     {
         if (dist>2)
         {
-            angleTurret0.setPosition(0.03);
-            angleTurret1.setPosition(0.97);
+            angleTurret0.setPosition(0.02);
+            angleTurret1.setPosition(0.98);
         }
         else if (dist>1.5)
         {
-            angleTurret0.setPosition(0.035);
-            angleTurret1.setPosition(0.965);
+            angleTurret0.setPosition(0.02);
+            angleTurret1.setPosition(0.98);
         }
         else if (dist>1)
         {
-            angleTurret0.setPosition(0.06);
-            angleTurret1.setPosition(0.94);
+            angleTurret0.setPosition(0.04);
+            angleTurret1.setPosition(0.96);
         }
         else if (dist>0.75)
         {
-            angleTurret0.setPosition(0.09);
-            angleTurret1.setPosition(0.91);
+            angleTurret0.setPosition(0.07);
+            angleTurret1.setPosition(0.93);
         }
         else if (dist<=0.5){
             angleTurret0.setPosition(0.1);
             angleTurret1.setPosition(0.9);
         }
         else {
-            angleTurret0.setPosition(0.06);
-            angleTurret1.setPosition(0.94);
+            angleTurret0.setPosition(0.05);
+            angleTurret1.setPosition(0.95);
         }
     }
 
     private void setTurretVelocity(double dist)
     {
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 271*(dist) + 1068;
+        double velocity = 271*(dist) + 1050;
+        if (dist>2)
+        {
+            velocity = velocity - 150;
+        }
+        else if (dist>1.5)
+        {
+            velocity = velocity + 20;
+        }
         v = velocity;
         turret.setVelocity((int)Math.round(velocity));
         telemetry.addData("velocity", (int)Math.round(velocity));
@@ -564,14 +581,14 @@ public class lavaTele extends LinearOpMode {
         int blue = colorFront.blue();
         NormalizedRGBA colors = colorFront.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.0015)
+        if ((colors.blue)> colors.green && colors.blue>0.00135)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
             telemetry.update();
             return true;
 
-        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
+        } else if(colors.green>(colors.blue) && colors.green>0.00135) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -587,7 +604,7 @@ public class lavaTele extends LinearOpMode {
         // Camera configuration (adjust these values)
         double cameraHeightM = 0.3;      // Height of camera from ground in meters
         double tagHeightM = 0.75;         // Height of AprilTag from ground
-        double cameraMountPitchDeg = 20.0; // Camera angle from horizontal
+        double cameraMountPitchDeg = 16.0; // Camera angle from horizontal
 
         double thetaV = Math.toRadians(cameraMountPitchDeg + ty);
         if (Math.abs(Math.cos(thetaV)) > 1e-3) {
@@ -609,5 +626,11 @@ public class lavaTele extends LinearOpMode {
     private boolean shooterReady(double velocity){
         double rpmTolerance = 25;
         return (Math.abs(turret.getVelocity() - velocity) < rpmTolerance);
+    }
+    private void unstuck()
+    {
+        popUp.setPosition(0.66);
+        spindexer.setPower(0.2);
+
     }
 }
