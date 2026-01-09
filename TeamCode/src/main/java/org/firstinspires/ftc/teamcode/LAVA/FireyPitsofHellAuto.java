@@ -14,7 +14,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
-
+//CLOSE RED AUTO
 @Autonomous(name = "FireyPitsofHell")
 public class FireyPitsofHellAuto extends OpMode {
     private Follower follower;

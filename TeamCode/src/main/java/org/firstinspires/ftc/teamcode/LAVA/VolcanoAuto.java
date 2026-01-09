@@ -14,7 +14,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
-
+//FAR RED AUTO
 @Autonomous(name = "Volcano")
 public class VolcanoAuto extends OpMode {
     private Follower follower;

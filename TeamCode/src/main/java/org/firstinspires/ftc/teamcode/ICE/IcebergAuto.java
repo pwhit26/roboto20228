@@ -15,7 +15,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
-//iceyy
+//maybe fake
 @Autonomous(name = "Iceberg")
 public class IcebergAuto extends OpMode {
     private Follower follower;
