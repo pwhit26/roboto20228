@@ -89,7 +89,7 @@ public class lavaTele extends LinearOpMode {
 
         //servo init
         popUp = hardwareMap.get(Servo.class, "popup");
-        popUp.setPosition(0.5);
+        popUp.setPosition(0);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
         angleTurret0.setPosition(0.06);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
@@ -197,7 +197,7 @@ public class lavaTele extends LinearOpMode {
                     case 2:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.23); //ALL THE WAY UP
+                            popUp.setPosition(0.51); //ALL THE WAY UP
                             ballcount--;
                         }
                         if (elapsedTime >= 750) {
@@ -206,7 +206,7 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 3:
-                        popUp.setPosition(0.5);
+                        popUp.setPosition(0);
                         //turret.setPower(0);
                         if (elapsedTime >= 500) {
                             shootStep++;
@@ -251,7 +251,7 @@ public class lavaTele extends LinearOpMode {
                     case 1:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.23); //ALL THE WAY UP
+                            popUp.setPosition(0.51); //ALL THE WAY UP
                             ballcount--;
                         }
 
@@ -261,7 +261,7 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 2:
-                        popUp.setPosition(0.5);
+                        popUp.setPosition(0);
                         //turret.setPower(0);
                         if (elapsedTime >= 500) {
                             shootStep++;
@@ -304,7 +304,7 @@ public class lavaTele extends LinearOpMode {
                     case 1:
                         if (elapsedTime>=2000)
                         {
-                            popUp.setPosition(0.23); //ALL THE WAY UP
+                            popUp.setPosition(0.51); //ALL THE WAY UP
                             ballcount--;
                         }
 
@@ -314,7 +314,7 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 2:
-                        popUp.setPosition(0.5);
+                        popUp.setPosition(0);
                         //turret.setPower(0);
                         if (elapsedTime >= 500) {
                             shootStep++;
@@ -629,7 +629,7 @@ public class lavaTele extends LinearOpMode {
     }
     private void unstuck()
     {
-        popUp.setPosition(0.5);
+        popUp.setPosition(0);
         spindexer.setPower(0.2);
 
     }
