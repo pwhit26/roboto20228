@@ -83,13 +83,13 @@ public class lavaTele extends LinearOpMode {
         spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
-        color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+        //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
         colorFront=hardwareMap.get(RevColorSensorV3.class, "colorFront");
 
 
         //servo init
         popUp = hardwareMap.get(Servo.class, "popup");
-        popUp.setPosition(0.66);
+        popUp.setPosition(0.5);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
         angleTurret0.setPosition(0.06);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
@@ -197,7 +197,7 @@ public class lavaTele extends LinearOpMode {
                     case 2:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.43); //ALL THE WAY UP
+                            popUp.setPosition(0.23); //ALL THE WAY UP
                             ballcount--;
                         }
                         if (elapsedTime >= 750) {
@@ -206,7 +206,7 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 3:
-                        popUp.setPosition(0.66);
+                        popUp.setPosition(0.5);
                         //turret.setPower(0);
                         if (elapsedTime >= 500) {
                             shootStep++;
@@ -251,7 +251,7 @@ public class lavaTele extends LinearOpMode {
                     case 1:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.43); //ALL THE WAY UP
+                            popUp.setPosition(0.23); //ALL THE WAY UP
                             ballcount--;
                         }
 
@@ -261,7 +261,7 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 2:
-                        popUp.setPosition(0.66);
+                        popUp.setPosition(0.5);
                         //turret.setPower(0);
                         if (elapsedTime >= 500) {
                             shootStep++;
@@ -304,7 +304,7 @@ public class lavaTele extends LinearOpMode {
                     case 1:
                         if (elapsedTime>=2000)
                         {
-                            popUp.setPosition(0.43); //ALL THE WAY UP
+                            popUp.setPosition(0.23); //ALL THE WAY UP
                             ballcount--;
                         }
 
@@ -314,7 +314,7 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 2:
-                        popUp.setPosition(0.66);
+                        popUp.setPosition(0.5);
                         //turret.setPower(0);
                         if (elapsedTime >= 500) {
                             shootStep++;
@@ -443,14 +443,14 @@ public class lavaTele extends LinearOpMode {
         int green = colorBack.green();
         int blue = colorBack.blue();
         NormalizedRGBA colors = colorBack.getNormalizedColors();
-        if ((colors.blue)> colors.green && colors.blue>0.0015)
+        if ((colors.blue)> colors.green && colors.blue>0.0013)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
             telemetry.update();
             return true;
 
-        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
+        } else if(colors.green>(colors.blue) && colors.green>0.0013) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -546,7 +546,7 @@ public class lavaTele extends LinearOpMode {
     private boolean greenDetect()
     {
         NormalizedRGBA colors = colorBack.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>0.0015) {
+        if(colors.green>(colors.blue) && colors.green>0.0013) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -562,7 +562,7 @@ public class lavaTele extends LinearOpMode {
     {
         NormalizedRGBA colors = colorBack.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.0015)
+        if ((colors.blue)> colors.green && colors.blue>0.0013)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
@@ -629,7 +629,7 @@ public class lavaTele extends LinearOpMode {
     }
     private void unstuck()
     {
-        popUp.setPosition(0.66);
+        popUp.setPosition(0.5);
         spindexer.setPower(0.2);
 
     }
