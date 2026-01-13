@@ -19,8 +19,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 //REAL CLOSE BLUE AUTO
-@Autonomous(name = "Penguinos")
-public class PenguinosAuto extends OpMode {
+@Autonomous(name = "PenguinoCleanseAuto")
+public class PenguinoCleanseAuto extends OpMode {
     private Follower follower;
     private Pose start, shoot, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3, shootAgain;
     private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho ;
@@ -165,8 +165,8 @@ public class PenguinosAuto extends OpMode {
     public void loop() {
         long elapsedTime = System.currentTimeMillis() - startTime;
         switch (pathStage) {
-            case 0: // Start first path
-               follower.followPath(startShoot);
+            case 0: //little baby first move
+                follower.followPath(startShoot);
                 if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -174,7 +174,7 @@ public class PenguinosAuto extends OpMode {
                 telemetry.addData("Status", "Finished first path");
                 break;
 
-            case 1: // First path in progress
+            case 1: // start turret
 
                 if (!follower.isBusy()) {
                     if (limelightWorky())
@@ -183,9 +183,9 @@ public class PenguinosAuto extends OpMode {
                         startTime = System.currentTimeMillis();
                     }
                     else {
-                        turret.setVelocity(2100);
-                        angleTurret0.setPosition(0.02);
-                        angleTurret1.setPosition(0.98);
+                        turret.setVelocity(4800);
+                        angleTurret0.setPosition(0.00);
+                        angleTurret1.setPosition(1.0);
                     }
                 }
                 if (elapsedTime >= 1000) {
@@ -195,99 +195,92 @@ public class PenguinosAuto extends OpMode {
                 telemetry.addData("Status", "Starting to shoot");
                 break;
 
-            case 2:
+            case 2: //spin to first spot
                 if (!follower.isBusy()) {
-                    // shooting sequence
-                 /*   if (limelightWorky())
-                    {
-                        startTime = System.currentTimeMillis();
-                    }
-                    else {
-                        turret.setVelocity(2100);
-                        angleTurret0.setPosition(0.02);
-                        angleTurret1.setPosition(0.98);
-                    }
-
-                  */
                     spindexer.setTargetPosition(95);
                 }
-                    if (elapsedTime>=700)
-                    {
-                        pathStage++;
-                        startTime = System.currentTimeMillis();
-                    }
-                    break;
+                if (elapsedTime>=1700)
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
 
-            case 3:
+            case 3: //pop up shoot
                 popUp.setPosition(0.51);
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 4:
+
+            case 4: //pop up down
                 popUp.setPosition(0);
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            /*case 5:
+
+            case 5: //spindex to next spot
                 if (!follower.isBusy()) {
-                    // shooting sequence
                     spindexer.setTargetPosition(275);
                 }
-                if (elapsedTime>=200)
+                if (elapsedTime>=700)
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 6:
+            case 6: //pop up shoot
                 popUp.setPosition(0.51);
-                if (elapsedTime >= 200) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 7:
+
+            case 7: //pop up down
                 popUp.setPosition(0);
-                if (elapsedTime >= 200) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 8:
+
+
+            case 8: //spindex to next spot
                 if (!follower.isBusy()) {
-                    // shooting sequence
                     spindexer.setTargetPosition(445);
                 }
-                if (elapsedTime>=200)
+                if (elapsedTime>=700)
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 9:
+            case 9: //pop up shoot
                 popUp.setPosition(0.51);
-                if (elapsedTime >= 200) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 10:
+
+            case 10: //pop up down
                 popUp.setPosition(0);
-                if (elapsedTime >= 200) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
-                break;*/
-            case 5:
+                break;
+
+            case 11:
                 if (!follower.isBusy()) {
                     turret.setVelocity(0);
-                  //  follower.followPath(shootPre1);
+                    //  follower.followPath(shootPre1);
                 }
                 if (elapsedTime >= 1500) {
                     pathStage++;
@@ -295,75 +288,12 @@ public class PenguinosAuto extends OpMode {
                 }
                 break;
 
-            /*case 4:
-                if (!follower.isBusy())
-                {
-                    //intake sequence
-                }
-                if (elapsedTime >= 3000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting third path");
 
-                break;
-            case 5:
-                popUp.setPosition(0.9);
-                turret.setPower(-0.2);
-                //spinny.setPower(-1);
-                follower.followPath(preSco1);
-                if (elapsedTime >= 3000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting fourth path");
 
-                break;
-            case 6:
-                follower.followPath(sco1Sho);
-                if (elapsedTime >= 3000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting fifth path");
-                break;
 
-            case 7: // First path in progress
-                if (!follower.isBusy()) {
-                    turret.setPower(0.85);
-                    //spinny.setPower(1);//1 for low battery
-                }
-                if (elapsedTime >= 4000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting second path");
-                break;
 
-            case 8:
-                if (!follower.isBusy()) {
-                    intake.setPower(1);
-                    //transferR.setPower(0.7);
-                    //transferL.setPower(0.7);
-                    //spinny.setPower(1);
-                }
-                if (elapsedTime >= 2000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
 
-            case 9:
-                if (!follower.isBusy()) {
-                    popUp.setPosition(0.1);
-                }
-                if (elapsedTime >= 5000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;*/
-
-            case 6: // All paths complete
+            case 12: // All paths complete
                 // Robot is stopped, do nothing
                 return;
         }
@@ -378,36 +308,7 @@ public class PenguinosAuto extends OpMode {
     }
 
 
-    /*public void autonomousPathUpdate()
-    {
-        switch(pathState)
-        {
-            case "init":
-                if(!follower.isBusy())
-                {
-                    follower.followPath(shootOne, true);
-                }
-                setPathState("grabBalls");
-                break;
 
-            case "grabBalls":
-                if (!follower.isBusy())
-                {
-                    follower.followPath(grabBalls, true);
-                }
-                setPathState("final");
-                break;
-            case "final":
-                if(!follower.isBusy())
-                {
-                    terminateOpModeNow();
-                }
-                break;
-
-        }
-
-
-    }*/
 
     public void setPathState (String pState){
         pathState = pState;

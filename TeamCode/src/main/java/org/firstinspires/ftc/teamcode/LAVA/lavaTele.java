@@ -145,7 +145,7 @@ public class lavaTele extends LinearOpMode {
                     setTurretAngle(dist);
                     if (gamepad1.b)
                     {
-                        setTurretVelocity(dist);
+                        setTurretVelocity(dist); //not sure if i didnt fuck this up sorry
                     }
                     else
                     {

@@ -1,5 +1,5 @@
 package org.firstinspires.ftc.teamcode.ICE;
-
+// close, grab preset, open gate
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
