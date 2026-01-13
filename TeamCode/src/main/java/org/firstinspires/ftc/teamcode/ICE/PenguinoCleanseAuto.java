@@ -35,6 +35,7 @@ public class PenguinoCleanseAuto extends OpMode {
     long elapsed = System.currentTimeMillis() - startT;
     boolean shootSequenceActive = false;
     boolean shootSequenceComplete = true;
+    //helloooo
 
     private double v;
     private double txDeg, tyDeg;
