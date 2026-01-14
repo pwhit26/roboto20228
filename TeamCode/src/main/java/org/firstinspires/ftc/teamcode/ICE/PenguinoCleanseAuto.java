@@ -19,6 +19,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 //REAL CLOSE BLUE AUTO
+//GOOD AUTO USE THIS ONE!!!!!!
 @Autonomous(name = "PenguinoCleanseAuto")
 public class PenguinoCleanseAuto extends OpMode {
     private Follower follower;
@@ -75,12 +76,13 @@ public class PenguinoCleanseAuto extends OpMode {
         popUp = hardwareMap.get(Servo.class, "popup");
         popUp.setPosition(0);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.02);
+        angleTurret0.setPosition(0.08);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.98);
+        angleTurret1.setPosition(0.92);
 
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        turnTurret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
         spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -95,7 +97,7 @@ public class PenguinoCleanseAuto extends OpMode {
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
-        shoot = new Pose(20, 0, Math.toRadians(20));
+        shoot = new Pose(9, 0, Math.toRadians(25));
         preScoop1 = new Pose(35, -10, Math.toRadians(90));
         scoop1 = new Pose(35,-45, Math.toRadians(90));
 
@@ -184,9 +186,9 @@ public class PenguinoCleanseAuto extends OpMode {
                         startTime = System.currentTimeMillis();
                     }
                     else {
-                        turret.setVelocity(4800);
-                        angleTurret0.setPosition(0.00);
-                        angleTurret1.setPosition(1.0);
+                        turret.setVelocity(1800);
+                        angleTurret0.setPosition(0.015);
+                        angleTurret1.setPosition(0.985);
                     }
                 }
                 if (elapsedTime >= 1000) {
@@ -362,26 +364,26 @@ public class PenguinoCleanseAuto extends OpMode {
         }
         else if (dist>1.5)
         {
-            angleTurret0.setPosition(0.02);
-            angleTurret1.setPosition(0.98);
-        }
-        else if (dist>1)
-        {
             angleTurret0.setPosition(0.04);
             angleTurret1.setPosition(0.96);
         }
-        else if (dist>0.75)
+        else if (dist>1)
         {
             angleTurret0.setPosition(0.07);
             angleTurret1.setPosition(0.93);
         }
+        else if (dist>0.75)
+        {
+            angleTurret0.setPosition(0.09);
+            angleTurret1.setPosition(0.91);
+        }
         else if (dist<=0.5){
-            angleTurret0.setPosition(0.1);
-            angleTurret1.setPosition(0.9);
+            angleTurret0.setPosition(0.12);
+            angleTurret1.setPosition(0.88);
         }
         else {
-            angleTurret0.setPosition(0.05);
-            angleTurret1.setPosition(0.95);
+            angleTurret0.setPosition(0.08);
+            angleTurret1.setPosition(0.92);
         }
     }
     private void setTurretVelocity(double dist)

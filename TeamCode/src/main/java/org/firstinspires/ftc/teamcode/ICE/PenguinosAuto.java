@@ -19,7 +19,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 //REAL CLOSE BLUE AUTO
-@Autonomous(name = "Penguinos")
+//GOOD AUTO USE THIS ONE!!!!!!
+@Autonomous(name = "PenguinosAuto")
 public class PenguinosAuto extends OpMode {
     private Follower follower;
     private Pose start, shoot, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3, shootAgain;
@@ -35,6 +36,7 @@ public class PenguinosAuto extends OpMode {
     long elapsed = System.currentTimeMillis() - startT;
     boolean shootSequenceActive = false;
     boolean shootSequenceComplete = true;
+    //helloooo
 
     private double v;
     private double txDeg, tyDeg;
@@ -74,9 +76,9 @@ public class PenguinosAuto extends OpMode {
         popUp = hardwareMap.get(Servo.class, "popup");
         popUp.setPosition(0);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.02);
+        angleTurret0.setPosition(0.08);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.98);
+        angleTurret1.setPosition(0.92);
 
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -94,7 +96,7 @@ public class PenguinosAuto extends OpMode {
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
-        shoot = new Pose(20, 0, Math.toRadians(20));
+        shoot = new Pose(9, 0, Math.toRadians(23));
         preScoop1 = new Pose(35, -10, Math.toRadians(90));
         scoop1 = new Pose(35,-45, Math.toRadians(90));
 
@@ -158,6 +160,7 @@ public class PenguinosAuto extends OpMode {
     @Override
     public void start() {
         telemetry.addData("Status", "Starting...");
+        limelightWorky();
         telemetry.update();
     }
 
@@ -165,8 +168,8 @@ public class PenguinosAuto extends OpMode {
     public void loop() {
         long elapsedTime = System.currentTimeMillis() - startTime;
         switch (pathStage) {
-            case 0: // Start first path
-               follower.followPath(startShoot);
+            case 0: //little baby first move
+                follower.followPath(startShoot);
                 if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -174,19 +177,21 @@ public class PenguinosAuto extends OpMode {
                 telemetry.addData("Status", "Finished first path");
                 break;
 
-            case 1: // First path in progress
+            case 1: // start turret
 
                 if (!follower.isBusy()) {
-                    if (limelightWorky())
+                    limelightWorky();
+                    turret.setVelocity(1580);
+                    /*if (limelightWorky())
                     {
                         pathStage++;
                         startTime = System.currentTimeMillis();
                     }
                     else {
-                        turret.setVelocity(2100);
-                        angleTurret0.setPosition(0.02);
-                        angleTurret1.setPosition(0.98);
-                    }
+                        turret.setVelocity(1800);
+                        angleTurret0.setPosition(0.015);
+                        angleTurret1.setPosition(0.985);
+                    }*/
                 }
                 if (elapsedTime >= 1000) {
                     pathStage++;
@@ -195,175 +200,105 @@ public class PenguinosAuto extends OpMode {
                 telemetry.addData("Status", "Starting to shoot");
                 break;
 
-            case 2:
+            case 2: //spin to first spot
                 if (!follower.isBusy()) {
-                    // shooting sequence
-                 /*   if (limelightWorky())
-                    {
-                        startTime = System.currentTimeMillis();
-                    }
-                    else {
-                        turret.setVelocity(2100);
-                        angleTurret0.setPosition(0.02);
-                        angleTurret1.setPosition(0.98);
-                    }
-
-                  */
                     spindexer.setTargetPosition(95);
                 }
-                    if (elapsedTime>=700)
-                    {
-                        pathStage++;
-                        startTime = System.currentTimeMillis();
-                    }
-                    break;
+                if (elapsedTime>=1700)
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
 
-            case 3:
+            case 3: //pop up shoot
                 popUp.setPosition(0.51);
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 4:
+
+            case 4: //pop up down
                 popUp.setPosition(0);
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            /*case 5:
+
+            case 5: //spindex to next spot
                 if (!follower.isBusy()) {
-                    // shooting sequence
                     spindexer.setTargetPosition(275);
                 }
-                if (elapsedTime>=200)
+                if (elapsedTime>=700)
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 6:
+            case 6: //pop up shoot
                 popUp.setPosition(0.51);
-                if (elapsedTime >= 200) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 7:
+
+            case 7: //pop up down
                 popUp.setPosition(0);
-                if (elapsedTime >= 200) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 8:
+
+
+            case 8: //spindex to next spot
                 if (!follower.isBusy()) {
-                    // shooting sequence
                     spindexer.setTargetPosition(445);
                 }
-                if (elapsedTime>=200)
+                if (elapsedTime>=700)
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 9:
+            case 9: //pop up shoot
                 popUp.setPosition(0.51);
-                if (elapsedTime >= 200) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 10:
+
+            case 10: //pop up down
                 popUp.setPosition(0);
-                if (elapsedTime >= 200) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
-                break;*/
-            case 5:
+                break;
+
+            case 11:
                 if (!follower.isBusy()) {
                     turret.setVelocity(0);
-                  //  follower.followPath(shootPre1);
+                    //  follower.followPath(shootPre1);
                 }
-                if (elapsedTime >= 1500) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            /*case 4:
-                if (!follower.isBusy())
-                {
-                    //intake sequence
-                }
-                if (elapsedTime >= 3000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting third path");
 
-                break;
-            case 5:
-                popUp.setPosition(0.9);
-                turret.setPower(-0.2);
-                //spinny.setPower(-1);
-                follower.followPath(preSco1);
-                if (elapsedTime >= 3000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting fourth path");
 
-                break;
-            case 6:
-                follower.followPath(sco1Sho);
-                if (elapsedTime >= 3000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting fifth path");
-                break;
 
-            case 7: // First path in progress
-                if (!follower.isBusy()) {
-                    turret.setPower(0.85);
-                    //spinny.setPower(1);//1 for low battery
-                }
-                if (elapsedTime >= 4000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting second path");
-                break;
 
-            case 8:
-                if (!follower.isBusy()) {
-                    intake.setPower(1);
-                    //transferR.setPower(0.7);
-                    //transferL.setPower(0.7);
-                    //spinny.setPower(1);
-                }
-                if (elapsedTime >= 2000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
 
-            case 9:
-                if (!follower.isBusy()) {
-                    popUp.setPosition(0.1);
-                }
-                if (elapsedTime >= 5000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;*/
-
-            case 6: // All paths complete
+            case 12: // All paths complete
                 // Robot is stopped, do nothing
                 return;
         }
@@ -378,36 +313,7 @@ public class PenguinosAuto extends OpMode {
     }
 
 
-    /*public void autonomousPathUpdate()
-    {
-        switch(pathState)
-        {
-            case "init":
-                if(!follower.isBusy())
-                {
-                    follower.followPath(shootOne, true);
-                }
-                setPathState("grabBalls");
-                break;
 
-            case "grabBalls":
-                if (!follower.isBusy())
-                {
-                    follower.followPath(grabBalls, true);
-                }
-                setPathState("final");
-                break;
-            case "final":
-                if(!follower.isBusy())
-                {
-                    terminateOpModeNow();
-                }
-                break;
-
-        }
-
-
-    }*/
 
     public void setPathState (String pState){
         pathState = pState;
@@ -460,44 +366,91 @@ public class PenguinosAuto extends OpMode {
         }
         else if (dist>1.5)
         {
-            angleTurret0.setPosition(0.02);
-            angleTurret1.setPosition(0.98);
+            angleTurret0.setPosition(0.025);
+            angleTurret1.setPosition(0.975);
         }
         else if (dist>1)
         {
-            angleTurret0.setPosition(0.04);
-            angleTurret1.setPosition(0.96);
+            angleTurret0.setPosition(0.045);
+            angleTurret1.setPosition(0.955);
         }
         else if (dist>0.75)
         {
-            angleTurret0.setPosition(0.07);
-            angleTurret1.setPosition(0.93);
+            angleTurret0.setPosition(0.09);
+            angleTurret1.setPosition(0.91);
         }
-        else if (dist<=0.5){
-            angleTurret0.setPosition(0.1);
-            angleTurret1.setPosition(0.9);
+        else if (dist<=0.75){
+            angleTurret0.setPosition(0.11);
+            angleTurret1.setPosition(0.89);
         }
         else {
-            angleTurret0.setPosition(0.05);
-            angleTurret1.setPosition(0.95);
+            angleTurret0.setPosition(0.02);
+            angleTurret1.setPosition(0.98);
         }
     }
     private void setTurretVelocity(double dist)
     {
+
+
+
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 271*(dist) + 1050;
-        if (dist>2)
+        double velocity = 1392.5*(Math.pow(dist, 0.173));//0.173 original
+        if (dist >1.2 && dist <1.5)
         {
-            velocity = velocity - 150;
+            velocity = velocity -60;
         }
-        else if (dist>1.5)
+
+        if (dist >=1.5 && dist <= 1.8)
         {
-            velocity = velocity + 20;
+            velocity = velocity -40;
         }
+        if (dist > 1.8 && dist < 2.75)
+        {
+            velocity = velocity - 100;
+        }
+        if (dist>2.8)
+        {
+            velocity = velocity - 300;
+        }
+        int tolerance = (int)(turret.getVelocity()-velocity);
+
+        if (tolerance > 10)
+        {
+            velocity = velocity - tolerance;
+        }
+        else if (tolerance < -10)
+        {
+            velocity = velocity - tolerance;
+        }
+
+
+
         v = velocity;
         turret.setVelocity((int)Math.round(velocity));
         telemetry.addData("velocity", (int)Math.round(velocity));
         telemetry.update();
+    }
+    private double fixTurretVelocity(int velocity)
+    {
+        int tolerance = (int)(turret.getVelocity()-velocity);
+
+        if (tolerance > 10)
+        {
+            velocity = velocity - tolerance;
+        }
+        else if (tolerance < -10)
+        {
+            velocity = velocity - tolerance;
+        }
+
+
+
+        v = velocity;
+        turret.setVelocity((int)Math.round(velocity));
+        telemetry.addData("velocity", (int)Math.round(velocity));
+        telemetry.update();
+        return v;
+
     }
     private double calculateDistance(double ty, double tx) {
         // Camera configuration (adjust these values)
@@ -579,7 +532,7 @@ public class PenguinosAuto extends OpMode {
         telemetry.update();
         return false;
     }
-    private boolean limelightWorky()
+    private void limelightWorky()
     {
         if (limelight!=null)
         {
@@ -597,20 +550,17 @@ public class PenguinosAuto extends OpMode {
                 angleAdjust(tx);
                 double dist=calculateDistance(ty, tx);
                 setTurretAngle(dist);
-                setTurretVelocity(dist);
+                //setTurretVelocity(dist);
 
                 telemetry.addData("LL Valid", isValid);
                 //telemetry.addData("AprilTag ID", tid);
                 telemetry.addData("TX/TY/TA", "%.2f / %.2f / %.2f", tx, ty, ta);
                 telemetry.addData("Distance from Apriltag/Angle 0/Angle1:", "%.2f / %.2f / %.2f", dist, angleTurret0.getPosition(), angleTurret1.getPosition());
-                return true;
             }
         }
         else {
             telemetry.addData("Limelight: ", "Not seen");
-            return false;
         }
-        return false;
     }
 
 }

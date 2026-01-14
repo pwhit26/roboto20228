@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.LAVA;
+package org.firstinspires.ftc.teamcode;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.hardware.limelightvision.LLResult;
@@ -18,8 +18,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 //RED APRILTAG LIMELIGHT
-@TeleOp(group = "AAA", name ="lavaTele")
-public class lavaTele extends LinearOpMode {
+@TeleOp
+public class NewTestRPM extends LinearOpMode {
     private Follower follower;
     private static final double MIN_COLOR_THRESHOLD = 0.5; // 50% of total area
     private boolean wasColorDetected = false;
@@ -43,6 +43,11 @@ public class lavaTele extends LinearOpMode {
     private RevColorSensorV3 colorBack, color0, color1, colorFront;
     private double txDeg, tyDeg;
     private double v;
+    private double rpm = 0;
+    private double velocity;
+    private boolean rBumpLast, lBumpLast;
+    private double current;
+    private double ticks = 28;
 
     Servo angleTurret0, angleTurret1, popUp;
     DcMotorEx turret, intake, frontRight, frontLeft, backRight, backLeft, spindexer, turnTurret;
@@ -143,14 +148,6 @@ public class lavaTele extends LinearOpMode {
                     angleAdjust(tx);
                     double dist=calculateDistance(ty, tx);
                     setTurretAngle(dist);
-                    if (gamepad1.b)
-                    {
-                        setTurretVelocity(dist); //not sure if i didnt fuck this up sorry
-                    }
-                    else
-                    {
-                        turret.setVelocity(0);
-                    }
 
                     telemetry.addData("LL Valid", isValid);
                     //telemetry.addData("AprilTag ID", tid);
@@ -159,10 +156,31 @@ public class lavaTele extends LinearOpMode {
                 }
             }
 
-            if (gamepad1.left_bumper && (limelight==null || limelight.getLatestResult()==null))
+
+            if (gamepad2.right_bumper && !rBumpLast)
             {
-                turret.setTargetPosition(0);
+                rpm = rpm + 10;
+                velocity = (rpm/60.0)*ticks;
+                turret.setVelocity((int)Math.round(velocity));
+                current = turret.getCurrentPosition() / 28.0;
+
+
             }
+            rBumpLast = gamepad1.right_bumper;
+            if (gamepad2.left_bumper && !lBumpLast)
+            {
+                rpm = rpm - 10;
+                velocity = (rpm/60.0)*ticks;
+                turret.setVelocity((int)Math.round(velocity));
+
+
+            }
+            lBumpLast = gamepad1.left_bumper;
+
+            telemetry.addData("target rpm", rpm);
+            telemetry.addData("actual rpm", (int)current);
+            telemetry.addData("target velocity", (int)Math.round(velocity));
+            telemetry.addData("turret velocity", (int)turret.getVelocity());
 
             //Shoot macro
             if (gamepad1.right_bumper) {
@@ -200,7 +218,7 @@ public class lavaTele extends LinearOpMode {
                             popUp.setPosition(0.51); //ALL THE WAY UP
                             ballcount--;
                         }
-                        if (elapsedTime >= 450) {
+                        if (elapsedTime >= 750) {
                             shootStep++;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -255,7 +273,7 @@ public class lavaTele extends LinearOpMode {
                             ballcount--;
                         }
 
-                        if (elapsedTime >= 450) {
+                        if (elapsedTime >= 750) {
                             shootStep++;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -302,12 +320,13 @@ public class lavaTele extends LinearOpMode {
                         }
                         break;
                     case 1:
-                        if (elapsedTime>=200)
+                        if (elapsedTime>=2000)
                         {
                             popUp.setPosition(0.51); //ALL THE WAY UP
+                            ballcount--;
                         }
 
-                        if (elapsedTime >= 450) {
+                        if (elapsedTime >= 750) {
                             shootStep++;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -341,16 +360,7 @@ public class lavaTele extends LinearOpMode {
 
 
 
-           //Turret Power
-            if (gamepad1.b && (limelight==null || limelight.getLatestResult()==null))
-            {
-                turret.setPower(0.6);
-                telemetry.addData("turret power:", turret.getPower());
-                //telemetry.update();
-            }
-            else {
-                turret.setPower(0);
-            }
+            //Turret Power
 
 
 
@@ -388,8 +398,8 @@ public class lavaTele extends LinearOpMode {
                         if (elapsedTime >= 400) {
                             intakeStep++;
                             sequenceStartTime = System.currentTimeMillis();
-                            }
-                            break;
+                        }
+                        break;
 
                     case 2:
                         if (isTargetColorDetected())
@@ -430,11 +440,6 @@ public class lavaTele extends LinearOpMode {
                 unstuck();
             }
 
-            if (gamepad2.y)
-            {
-                intakeTimingDetection();
-            }
-
             telemetry.update();
 
 
@@ -447,14 +452,14 @@ public class lavaTele extends LinearOpMode {
         int green = colorBack.green();
         int blue = colorBack.blue();
         NormalizedRGBA colors = colorBack.getNormalizedColors();
-        if ((colors.blue)> colors.green && colors.blue>0.00125)
+        if ((colors.blue)> colors.green && colors.blue>0.0013)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
             telemetry.update();
             return true;
 
-        } else if(colors.green>(colors.blue) && colors.green>0.00125) {
+        } else if(colors.green>(colors.blue) && colors.green>0.0013) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -506,22 +511,22 @@ public class lavaTele extends LinearOpMode {
         }
         else if (dist>1.5)
         {
-            angleTurret0.setPosition(0.025);
-            angleTurret1.setPosition(0.975);
+            angleTurret0.setPosition(0.04);
+            angleTurret1.setPosition(0.96);
         }
         else if (dist>1)
         {
-            angleTurret0.setPosition(0.045);
-            angleTurret1.setPosition(0.955);
+            angleTurret0.setPosition(0.07);
+            angleTurret1.setPosition(0.93);
         }
         else if (dist>0.75)
         {
-            angleTurret0.setPosition(0.09);
-            angleTurret1.setPosition(0.91);
-        }
-        else if (dist<=0.75){
             angleTurret0.setPosition(0.11);
             angleTurret1.setPosition(0.89);
+        }
+        else if (dist<=0.75){
+            angleTurret0.setPosition(0.13);
+            angleTurret1.setPosition(0.87);
         }
         else {
             angleTurret0.setPosition(0.02);
@@ -531,41 +536,16 @@ public class lavaTele extends LinearOpMode {
 
     private void setTurretVelocity(double dist)
     {
-
-
-
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1392.5*(Math.pow(dist, 0.173));//0.173 original
-        if (dist >1.2 && dist <1.5)
+        double velocity = 271*(dist) + 1050;
+        if (dist>2)
         {
-            velocity = velocity -60;
+            velocity = velocity - 150;
         }
-
-        if (dist >=1.5 && dist <= 1.8)
+        else if (dist>1.5)
         {
-            velocity = velocity -40;
+            velocity = velocity + 20;
         }
-        if (dist > 1.8 && dist < 2.75)
-        {
-            velocity = velocity - 100;
-        }
-        if (dist>3)
-        {
-            velocity = velocity + 50;
-        }
-        int tolerance = (int)(turret.getVelocity()-velocity);
-
-        if (tolerance > 10)
-        {
-            velocity = velocity - tolerance;
-        }
-        else if (tolerance < -10)
-        {
-            velocity = velocity - tolerance;
-        }
-
-
-
         v = velocity;
         turret.setVelocity((int)Math.round(velocity));
         telemetry.addData("velocity", (int)Math.round(velocity));
@@ -575,7 +555,7 @@ public class lavaTele extends LinearOpMode {
     private boolean greenDetect()
     {
         NormalizedRGBA colors = colorBack.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>0.00125) {
+        if(colors.green>(colors.blue) && colors.green>0.0013) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -591,7 +571,7 @@ public class lavaTele extends LinearOpMode {
     {
         NormalizedRGBA colors = colorBack.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.00125)
+        if ((colors.blue)> colors.green && colors.blue>0.0013)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
