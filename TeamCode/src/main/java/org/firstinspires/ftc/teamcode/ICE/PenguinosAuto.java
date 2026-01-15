@@ -19,7 +19,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 //REAL CLOSE BLUE AUTO
-//GOOD AUTO USE THIS ONE!!!!!!
+//GOOD AUTO USE THIS ONE!!!!!!!
 @Autonomous(name = "PenguinosAuto")
 public class PenguinosAuto extends OpMode {
     private Follower follower;
