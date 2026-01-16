@@ -24,7 +24,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 public class deathByAuto extends OpMode {
     private Follower follower;
     private Pose start, shoot, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3, shootAgain;
-    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho, intake2 ;
+    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho, intake2, intake3;
     String pathState="";
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
@@ -36,6 +36,7 @@ public class deathByAuto extends OpMode {
     long elapsed = System.currentTimeMillis() - startT;
     boolean shootSequenceActive = false;
     boolean shootSequenceComplete = true;
+    boolean preScoStarted=false;
     //helloooo
 
     private double v;
@@ -102,8 +103,9 @@ public class deathByAuto extends OpMode {
         start = new Pose(0, 0, Math.toRadians(0));
         shoot = new Pose(9, 0, Math.toRadians(26));
         preScoop1 = new Pose(25, 10, Math.toRadians(90));
-        scoop1 = new Pose(25,47, Math.toRadians(90));
-        scoop2 = new Pose(25, 50, Math.toRadians(90));
+        scoop1 = new Pose(25,44, Math.toRadians(90));
+        scoop2 = new Pose(25, 46, Math.toRadians(90));
+        scoop3 = new Pose(25, 50, Math.toRadians(90));
 
 
         /*shootAgain = new Pose (80, -10, Math.toRadians(24));
@@ -138,7 +140,11 @@ public class deathByAuto extends OpMode {
 
         intake2 = follower.pathBuilder()
                 .addPath(new BezierLine(scoop1, scoop2))
-                .setLinearHeadingInterpolation(scoop1.getHeading(), shoot.getHeading())
+                .setLinearHeadingInterpolation(scoop1.getHeading(), scoop2.getHeading())
+                .build();
+        intake3 = follower.pathBuilder()
+                .addPath(new BezierLine(scoop2, scoop3))
+                .setLinearHeadingInterpolation(scoop2.getHeading(), scoop3.getHeading())
                 .build();
 
         /*shootPre2 = follower.pathBuilder()
@@ -306,7 +312,7 @@ public class deathByAuto extends OpMode {
                     pathStage++;
                 }
                 break;
-            case 14:
+            /*case 14:
                 if (!follower.isBusy()) {
                     follower.followPath(preSco1);
 
@@ -337,10 +343,49 @@ public class deathByAuto extends OpMode {
                 }
 
 
+                break;*/
+            case 14:
+
+                // Start the path ONCE
+                if (!preScoStarted) {
+                    intake.setPower(0.37);
+                    spindexer.setTargetPosition(525);
+                    follower.followPath(preSco1);
+                    startTime = System.currentTimeMillis();
+                    preScoStarted = true;
+                }
+
+                elapsedTime = System.currentTimeMillis() - startTime;
+
+                // ---- MECHANISM TIMING (always runs) ----
+                if (elapsedTime >= 1050) {
+                    intake.setPower(0);
+                    spindexer.setTargetPosition(700);
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                    preScoStarted = false;
+                }
                 break;
             case 15:
-                intake.setPower(0.35);
-                if (!follower.isBusy() && elapsedTime>=400)
+                if (!follower.isBusy()) {
+                    intake.setPower(0.35);
+                    spindexer.setTargetPosition(700);
+                    follower.followPath(intake2);
+                }
+                if (elapsedTime >= 1050) {
+                    intake.setPower(0);
+                    spindexer.setTargetPosition(875);
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+            case 16:
+                if (!follower.isBusy()) {
+                    spindexer.setTargetPosition(875);
+                    intake.setPower(0.35);
+                    follower.followPath(intake3);
+                }
+                if (elapsedTime>=1050)
                 {
                     intake.setPower(0);
                     pathStage++;
@@ -348,9 +393,9 @@ public class deathByAuto extends OpMode {
                 }
                 break;
 
-            case 16: // All paths complete
+            case 17: // All paths complete
                 // Robot is stopped, do nothing
-                terminateOpModeNow();
+                //terminateOpModeNow();
                 return;
         }
 
