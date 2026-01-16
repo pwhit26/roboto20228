@@ -24,10 +24,10 @@ public class ServoTuner extends LinearOpMode {
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        angleTurret0 = hardwareMap.get(Servo.class, "popup");
-        //angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
+        angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
+        angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
         angleTurret0.setPosition(skib0);
-        //angleTurret1.setPosition(skib1);
+        angleTurret1.setPosition(skib1);
         waitForStart();
         while (opModeIsActive()){
             long elapsedTime = System.currentTimeMillis() - startTime;
@@ -45,7 +45,7 @@ public class ServoTuner extends LinearOpMode {
             lBumpLast = gamepad1.left_bumper;
 
             angleTurret0.setPosition(skib0);
-            //angleTurret1.setPosition(skib1);
+            angleTurret1.setPosition(skib1);
             
             telemetry.addLine("" + skib0);
             telemetry.addLine("" + skib1);

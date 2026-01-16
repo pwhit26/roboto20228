@@ -477,7 +477,7 @@ public class lavaTele extends LinearOpMode {
     private boolean intakeTimingDetection()
     {
         NormalizedRGBA intakeColors = colorBack.getNormalizedColors();
-        if (intakeColors.red>0.001 && !(intakeColors.green>0.0016) && !(intakeColors.blue>0.0015))//(intakeColors.red>intakeColors.green && intakeColors.red>intakeColors.blue)
+        if (intakeColors.red>0.001 && !(intakeColors.green>0.0016) && !(intakeColors.blue>0.0016))//(intakeColors.red>intakeColors.green && intakeColors.red>intakeColors.blue)
         {
             telemetry.addData("Color seen:", "red");
             telemetry.addData("Color seen:", intakeColors.red);
@@ -583,7 +583,7 @@ public class lavaTele extends LinearOpMode {
     private boolean greenDetect()
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.00195) {
+        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.00205) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -599,7 +599,7 @@ public class lavaTele extends LinearOpMode {
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.0016)
+        if ((colors.blue)> colors.green && colors.blue>0.0018)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);

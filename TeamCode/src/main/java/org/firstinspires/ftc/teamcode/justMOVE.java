@@ -21,10 +21,10 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 //REAL CLOSE BLUE AUTO
 //GOOD AUTO USE THIS ONE!!!!!!
 @Autonomous
-public class deathByAuto extends OpMode {
+public class justMOVE extends OpMode {
     private Follower follower;
     private Pose start, shoot, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3, shootAgain;
-    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho, intake2, intake3;
+    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, preSco2,sco2Sho ;
     String pathState="";
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
@@ -36,7 +36,6 @@ public class deathByAuto extends OpMode {
     long elapsed = System.currentTimeMillis() - startT;
     boolean shootSequenceActive = false;
     boolean shootSequenceComplete = true;
-    boolean preScoStarted=false;
     //helloooo
 
     private double v;
@@ -92,7 +91,7 @@ public class deathByAuto extends OpMode {
         spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         spindexer.setTargetPosition(0);
         spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        spindexer.setPower(0.4);
+        spindexer.setPower(0.3);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
         //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
@@ -101,11 +100,9 @@ public class deathByAuto extends OpMode {
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
-        shoot = new Pose(9, 0, Math.toRadians(26));
-        preScoop1 = new Pose(25, 10, Math.toRadians(90));
-        scoop1 = new Pose(25,44, Math.toRadians(90));
-        scoop2 = new Pose(25, 46, Math.toRadians(90));
-        scoop3 = new Pose(25, 50, Math.toRadians(90));
+        shoot = new Pose(9, 0, Math.toRadians(25));
+        preScoop1 = new Pose(9, 5, Math.toRadians(25));
+        //scoop1 = new Pose(35,-45, Math.toRadians(90));
 
 
         /*shootAgain = new Pose (80, -10, Math.toRadians(24));
@@ -132,27 +129,23 @@ public class deathByAuto extends OpMode {
                 .addPath(new BezierLine(shoot, preScoop1))
                 .setLinearHeadingInterpolation(shoot.getHeading(), preScoop1.getHeading())
                 .build();
-
+/*
         preSco1 = follower.pathBuilder()
                 .addPath(new BezierLine(preScoop1, scoop1))
                 .setLinearHeadingInterpolation(preScoop1.getHeading(), scoop1.getHeading())
                 .build();
 
-        intake2 = follower.pathBuilder()
-                .addPath(new BezierLine(scoop1, scoop2))
-                .setLinearHeadingInterpolation(scoop1.getHeading(), scoop2.getHeading())
-                .build();
-        intake3 = follower.pathBuilder()
-                .addPath(new BezierLine(scoop2, scoop3))
-                .setLinearHeadingInterpolation(scoop2.getHeading(), scoop3.getHeading())
+        sco1Sho = follower.pathBuilder()
+                .addPath(new BezierLine(scoop1, shoot))
+                .setLinearHeadingInterpolation(scoop1.getHeading(), shoot.getHeading())
                 .build();
 
-        shootPre2 = follower.pathBuilder()
-                .addPath(new BezierLine(scoop3, shoot))
-                .setLinearHeadingInterpolation(scoop3.getHeading(), shoot.getHeading())
+        /*shootPre2 = follower.pathBuilder()
+                .addPath(new BezierLine(shoot, preScoop2))
+                .setLinearHeadingInterpolation(shoot.getHeading(), preScoop2.getHeading())
                 .build();
 
-        /*preSco2 = follower.pathBuilder()
+        preSco2 = follower.pathBuilder()
                 .addPath(new BezierLine(preScoop2, scoop2))
                 .setLinearHeadingInterpolation(preScoop2.getHeading(), scoop2.getHeading())
                 .build();
@@ -161,6 +154,7 @@ public class deathByAuto extends OpMode {
                 .addPath(new BezierLine(scoop2, shoot))
                 .setLinearHeadingInterpolation(scoop2.getHeading(), shoot.getHeading())
                 .build();*/
+
 
 
 
@@ -180,310 +174,25 @@ public class deathByAuto extends OpMode {
         switch (pathStage) {
             case 0: //little baby first move
                 follower.followPath(startShoot);
-                if (elapsedTime >= 800) {
+                if (!follower.isBusy()) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Finished first path");
                 break;
+            case 1: //little baby first move
 
-            case 1: // start turret
-
-                if (!follower.isBusy()) {
-                    turret.setVelocity(1460); //ball 1
-                    angleTurret0.setPosition(0.015);
-                    angleTurret1.setPosition(0.985);
-                }
-                if (elapsedTime >= 900) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting to shoot");
-                break;
-
-            case 2: //spin to first spot
-                if (!follower.isBusy()) {
-                    spindexer.setTargetPosition(95);
-                }
-                if (elapsedTime>=1700)
-                {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 3: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 4: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(1610); //ball 2
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 5: //spindex to next spot
-                if (!follower.isBusy()) {
-
-                    spindexer.setTargetPosition(275);
-                }
-                if (elapsedTime>=700)
-                {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 6: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 7: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(1640); //ball 3
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-
-            case 8: //spindex to next spot
-                if (!follower.isBusy()) {
-
-                    spindexer.setTargetPosition(445);
-                }
-                if (elapsedTime>=700)
-                {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 9: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 10: //pop up down
-                popUp.setPosition(0);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 11:
-                if (!follower.isBusy()) {
-                    turret.setVelocity(0);
-                    //  follower.followPath(shootPre1);
-                }
-                if (elapsedTime >= 800) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 12:
                 follower.followPath(shootPre1);
-                pathStage++;
-                startTime = System.currentTimeMillis();
-                /*if (elapsedTime >= 1000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }*/
-                telemetry.addData("Status", "Starting second path");
-                break;
-            case 13:
                 if (!follower.isBusy()) {
                     pathStage++;
-                }
-                break;
-            case 14:
-
-                // Start the path ONCE
-                if (!preScoStarted) {
-                    intake.setPower(0.4);
-                    spindexer.setTargetPosition(525);
-                    follower.followPath(preSco1);
-                    startTime = System.currentTimeMillis();
-                    preScoStarted = true;
-                }
-
-                elapsedTime = System.currentTimeMillis() - startTime;
-
-                // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1200) {
-                    intake.setPower(0);
-                    spindexer.setTargetPosition(700);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                    preScoStarted = false;
-                }
-                break;
-            case 15:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.4);
-                    spindexer.setTargetPosition(700);
-                    follower.followPath(intake2);
-                }
-                if (elapsedTime >= 1050) {
-                    intake.setPower(0);
-                    spindexer.setTargetPosition(875);
-                    pathStage++;
                     startTime = System.currentTimeMillis();
                 }
-                break;
-            case 16:
-                if (!follower.isBusy()) {
-                    spindexer.setTargetPosition(880);
-                    intake.setPower(0.4);
-                    follower.followPath(intake3);
-                }
-                if (elapsedTime>=1950)
-                {
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 17:
-                follower.followPath(shootPre2);
-                pathStage++;
-                startTime = System.currentTimeMillis();
-                /*if (elapsedTime >= 1000) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }*/
-                telemetry.addData("Status", "Starting second path");
-                break;
-            case 18: // start turret
-                if (!follower.isBusy()) {
-                    turret.setVelocity(1460); //ball 1
-                    angleTurret0.setPosition(0.015);
-                    angleTurret1.setPosition(0.985);
-                }
-                if (elapsedTime >= 900) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting to shoot");
-                break;
-
-            case 19: //spin to first spot
-                if (!follower.isBusy()) {
-                    spindexer.setTargetPosition(980);
-                }
-                if (elapsedTime>=1700)
-                {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 20: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 21: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(1610); //ball 2
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 22: //spindex to next spot
-                if (!follower.isBusy()) {
-
-                    spindexer.setTargetPosition(1150);
-                }
-                if (elapsedTime>=700)
-                {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 23: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 24: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(1640); //ball 3
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
+                telemetry.addData("Status", "Finished second path");
                 break;
 
 
-            case 25: //spindex to next spot
-                if (!follower.isBusy()) {
-
-                    spindexer.setTargetPosition(1320);
-                }
-                if (elapsedTime>=700)
-                {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 26: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 27: //pop up down
-                popUp.setPosition(0);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 28:
-                if (!follower.isBusy()) {
-                    turret.setVelocity(0);
-                    //  follower.followPath(shootPre1);
-                }
-                if (elapsedTime >= 800) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 29: // All paths complete
+            case 2: // All paths complete
                 // Robot is stopped, do nothing
-                    //terminateOpModeNow();
                 return;
         }
 

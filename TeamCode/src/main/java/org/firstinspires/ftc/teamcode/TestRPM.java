@@ -3,11 +3,13 @@ package org.firstinspires.ftc.teamcode;
 import com.pedropathing.follower.Follower;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
@@ -16,7 +18,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 public class TestRPM extends LinearOpMode {
     private Follower follower;
     private DcMotorEx turret;
-    private DcMotorEx frontRight, frontLeft, backRight, backLeft;
+    private DcMotorEx frontRight, frontLeft, backRight, backLeft, spindexer;
     private Limelight3A limelight;
     private double cameraHeightM = 0.25;      // set your camera height (m)
     private double tagHeightM = 0.80;         // set your tag center height (m)
@@ -26,7 +28,14 @@ public class TestRPM extends LinearOpMode {
     private double velocity;
     private boolean rBumpLast, lBumpLast;
     private double current;
-    Servo angleTurret0, angleTurret1;
+    Servo angleTurret0, angleTurret1, popUp;
+    long sequenceStartTime = 0;
+    int popSequenceStep = 0;
+    int shootStep=0;
+    boolean shootSequenceActive = false;
+    boolean shootSequenceComplete = true;
+    private RevColorSensorV3 colorBack, color0, color1, colorFront;
+    private boolean wasColorDetected = false;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -47,6 +56,14 @@ public class TestRPM extends LinearOpMode {
         angleTurret0.setPosition(0.06);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
         angleTurret1.setPosition(0.94);
+        popUp=hardwareMap.get(Servo.class, "popup");
+        popUp.setPosition(0);
+        spindexer=hardwareMap.get(DcMotorEx.class, "spindexer");
+        spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
+        color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
+        //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+        colorFront=hardwareMap.get(RevColorSensorV3.class, "colorFront");
 
         turret= hardwareMap.get(DcMotorEx.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -108,6 +125,63 @@ public class TestRPM extends LinearOpMode {
         }
             lBumpLast = gamepad1.left_bumper;
 
+            if (gamepad2.dpad_right) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                telemetry.addData("Shoot Order:", "General Shoot");
+                switch (shootStep) {
+                    case 0:
+                        //turret.setPower(0.6);
+                        if (elapsedTime >= 300) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        boolean isColorDetected = isTargetColorDetected();
+                        if (isColorDetected && !wasColorDetected) {
+                            // Color just detected, stop the spindexer
+                            spindexer.setPower(0);
+                            wasColorDetected = true;
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        } else if (!isColorDetected) {
+                            // No color detected, keep spinning
+                            spindexer.setPower(0.25); // Adjust power as needed
+                            wasColorDetected = false;
+                        }
+                        else if (elapsedTime >= 5000) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 2:
+                        if (elapsedTime>=200)
+                        {
+                            popUp.setPosition(0.51); //ALL THE WAY UP
+                        }
+                        if (elapsedTime >= 750) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 3:
+                        popUp.setPosition(0);
+                        //turret.setPower(0);
+                        if (elapsedTime >= 500) {
+                            shootStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 4:
+                        shootSequenceComplete = true;
+                        shootSequenceActive = false;
+                        sequenceStartTime = 0;
+                        shootStep = 0;
+                        break;
+
+                }
+            }
+
         //turret.setVelocity((int)Math.round(velocity));
             telemetry.addData("target rpm", rpm);
             telemetry.addData("actual rpm", (int)current);
@@ -155,31 +229,31 @@ public class TestRPM extends LinearOpMode {
     {
         if (dist>2)
         {
-            angleTurret0.setPosition(0.03);
-            angleTurret1.setPosition(0.97);
+            angleTurret0.setPosition(0.02);
+            angleTurret1.setPosition(0.98);
         }
         else if (dist>1.5)
         {
-            angleTurret0.setPosition(0.035);
-            angleTurret1.setPosition(0.965);
+            angleTurret0.setPosition(0.04);
+            angleTurret1.setPosition(0.96);
         }
         else if (dist>1)
         {
-            angleTurret0.setPosition(0.06);
-            angleTurret1.setPosition(0.94);
+            angleTurret0.setPosition(0.07);
+            angleTurret1.setPosition(0.93);
         }
         else if (dist>0.75)
         {
-            angleTurret0.setPosition(0.09);
-            angleTurret1.setPosition(0.91);
+            angleTurret0.setPosition(0.11);
+            angleTurret1.setPosition(0.89);
         }
-        else if (dist<=0.5){
-            angleTurret0.setPosition(0.1);
-            angleTurret1.setPosition(0.9);
+        else if (dist<=0.75){
+            angleTurret0.setPosition(0.13);
+            angleTurret1.setPosition(0.87);
         }
         else {
-            angleTurret0.setPosition(0.06);
-            angleTurret1.setPosition(0.94);
+            angleTurret0.setPosition(0.09);
+            angleTurret1.setPosition(0.91);
         }
     }
     private double calculateDistance(double ty, double tx) {
@@ -203,5 +277,31 @@ public class TestRPM extends LinearOpMode {
         else {
             return 0;
         }
+
+    }
+
+    private boolean isTargetColorDetected() {
+        // Get raw color values
+        int red = colorBack.red();
+        int green = colorBack.green();
+        int blue = colorBack.blue();
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
+        if ((colors.blue)> colors.green && colors.blue>0.0013)
+        {
+            telemetry.addData("Color seen:", "purple");
+            telemetry.addData("Color seen:", colors.blue);
+            telemetry.update();
+            return true;
+
+        } else if(colors.green>(colors.blue) && colors.green>0.0013) {
+
+            telemetry.addData("Color seen:", "green");
+            telemetry.addData("Color seen:", colors.green);
+            telemetry.update();
+            return true;
+        }
+        telemetry.addData("Color seen:", "No Color");
+        telemetry.update();
+        return false;
 
     }}
