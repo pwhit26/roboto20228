@@ -20,6 +20,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 //REAL CLOSE BLUE AUTO
 //GOOD AUTO USE THIS ONE!!!!!!
+//hellooooo
 @Autonomous
 public class deathByAuto extends OpMode {
     private Follower follower;
