@@ -82,7 +82,6 @@ public class PenguinoCleanseAuto extends OpMode {
 
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        turnTurret.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
         spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
