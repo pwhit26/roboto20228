@@ -45,6 +45,8 @@ public class lavaTele extends LinearOpMode {
     private RevColorSensorV3 colorBack, color0, color1, colorFront;
     private double txDeg, tyDeg;
     private double v;
+    private int initialPos=0;
+
 
     Servo angleTurret0, angleTurret1, popUp;
     DcMotorEx turret, intake, frontRight, frontLeft, backRight, backLeft, spindexer, turnTurret;
@@ -168,6 +170,7 @@ public class lavaTele extends LinearOpMode {
 
             //Shoot macro
             if (gamepad1.right_bumper) {
+                spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 telemetry.addData("Shoot Order:", "General Shoot");
                 switch (shootStep) {
@@ -227,6 +230,7 @@ public class lavaTele extends LinearOpMode {
 
             else if (gamepad1.dpad_left) //Just green
             {
+                spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 telemetry.addData("Shoot Order:", "Green");
                 switch (shootStep)
@@ -280,6 +284,7 @@ public class lavaTele extends LinearOpMode {
             }
             else if (gamepad1.dpad_right) //just purple
             {
+                spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 telemetry.addData("Shoot Order:", "Purple");
                 switch (shootStep)
@@ -354,11 +359,112 @@ public class lavaTele extends LinearOpMode {
                 turret.setPower(0);
             }
 
+            if (gamepad1.dpad_up)
+            {
+                setInitialPos();
+
+
+            //    spindexer.setTargetPosition(spindexer.getCurrentPosition()+20);
+
+            }
+
+
+
+
 
 
 
             //intake
+
+           /* if (gamepad1.y)
+            {
+                spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                spindexer.setTargetPosition(initialPos);
+                spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                spindexer.setPower(0.3);
+                initialPos=initialPos+175;
+                intake.setPower(0.6);
+
+            }*/
+            /*
+            if (gamepad1.y)
+            {
+                intakeSequenceComplete = false;
+                intakeSequenceActive = true;
+                //spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                //spindexer.setTargetPosition(initialPos);
+                //spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                //spindexer.setPower(0.3);
+                //spindexer.setTargetPosition(0);
+                //spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                //spindexer.setPower(0.3);
+
+
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                switch (intakeStep)
+                {
+                    case 0:
+
+                        //setInitialPos();
+                        spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                        spindexer.setTargetPosition(initialPos);
+                        spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                        spindexer.setPower(0.3);
+
+                        if (elapsedTime>=300)
+                        {
+                            intakeStep++;
+                            sequenceStartTime=System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        if (!isSpotTaken())
+                        {
+                            intake.setPower(0.63);
+                            telemetry.addData("Intake Power", intake.getPower());
+                            if (elapsedTime>=800)
+                            {
+                                intakeStep++;
+                                sequenceStartTime=System.currentTimeMillis();
+                            }
+                        }
+                        if (isSpotTaken())
+                        {
+                          //  intake.setPower(0);
+                            intakeStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 2:
+                        intake.setPower(0);
+                        //initialPos=initialPos+175;
+                        spindexer.setTargetPosition(initialPos + 190);
+                        initialPos = spindexer.getCurrentPosition();
+                        if (elapsedTime>=300)
+                        {
+                            intakeStep++;
+                            sequenceStartTime=System.currentTimeMillis();
+                        }
+                        break;
+
+                    case 3:
+                        intakeSequenceComplete = true;
+                        intakeSequenceActive = false;
+                        sequenceStartTime = 0;
+
+                        //intakeStep = 0;
+                        initialPos = 0;
+                        break;
+
+
+                }
+            }
+
+
+             */
+/*
             if (gamepad1.y) {
+
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 //ballcount=0;
                 switch (intakeStep)
@@ -386,14 +492,15 @@ public class lavaTele extends LinearOpMode {
                             intakeStep++;
                             sequenceStartTime = System.currentTimeMillis();
                         }
-                        /*
-                        else if (elapsedTime >= 400) {
-                            intakeStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                            }
 
-                         */
-                            break;
+                        //else if (elapsedTime >= 400) {
+                            //intakeStep++;
+                            //sequenceStartTime = System.currentTimeMillis();
+                            //}
+
+
+                            //break;
+
 
                     case 2:
                         if (isTargetColorDetected())
@@ -418,6 +525,52 @@ public class lavaTele extends LinearOpMode {
                 }
 
             }
+*/
+            if (gamepad1.y)
+            {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                switch (intakeStep)
+                {
+                    case 0:
+                        spindexer.setVelocity(400);
+                        intake.setPower(0);
+                        if (elapsedTime>=150)
+                        {
+                            intakeStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        if (intakeTimingDetection() && !isSpotTaken())
+                        {
+                            spindexer.setVelocity(0);
+                            intake.setPower(0.6);
+                            if (elapsedTime>=800)
+                            {
+                                intakeStep++;
+                                sequenceStartTime = System.currentTimeMillis();
+                            }
+                        }
+                        else if (isSpotTaken())
+                        {
+                            intakeStep++;
+                        }
+                        break;
+                    case 2:
+                        intake.setPower(0);
+                        spindexer.setVelocity(400);
+                        if (elapsedTime>=150)
+                        {
+                            intakeStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 3:
+                        sequenceStartTime = 0;
+                        intakeStep = 0;
+                        break;
+                }
+            }
             else if (gamepad1.a)
             {
                 intake.setPower(-0.6);
@@ -429,7 +582,9 @@ public class lavaTele extends LinearOpMode {
             else {
                 intake.setPower(0);
             }
-            if (gamepad1.x)
+            //spindexer.setTargetPosition(initialPos);
+            //yLast = gamepad1.y;
+            if (gamepad1.x && !gamepad1.y)
             {
                 unstuck();
             }
@@ -669,5 +824,14 @@ public class lavaTele extends LinearOpMode {
         popUp.setPosition(0);
         spindexer.setPower(0.2);
 
+    }
+    private void setInitialPos()
+    {
+        spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        spindexer.setPower(0.2);
+        if (intakeTimingDetection())
+        {
+            spindexer.setPower(0);
+        }
     }
 }
