@@ -526,7 +526,72 @@ public class lavaTele extends LinearOpMode {
 
             }
 */
-            if (gamepad1.y)
+
+            //intake
+            if (gamepad1.y) {
+                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
+                //ballcount=0;
+                switch (intakeStep)
+                {
+                    case 0:
+                        intake.setPower(0);
+                        spindexer.setPower(0.1775);
+                        if (elapsedTime >= 50) {
+                            intakeStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        boolean intakeGo = intakeTimingDetection();
+                        if (intakeGo && !isSpotTaken())
+                        {
+                            intake.setPower(0.63);
+                            spindexer.setPower(0);
+                            wasColorDetected = true;
+                            telemetry.addData("Intake Power", intake.getPower());
+                            //telemetry.update();
+                        }
+                        if (isSpotTaken())
+                        {
+                            intakeStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        /*
+                        else if (elapsedTime >= 400) {
+                            intakeStep++;
+                            sequenceStartTime = System.currentTimeMillis();
+                            }
+
+                         */
+                        break;
+
+                    case 2:
+                        if (isTargetColorDetected())
+                        {
+                            ballcount++;
+
+                        }
+                        telemetry.addData("Intake Power", intake.getPower());
+                        telemetry.addData("Ball Count:", ballcount);
+                        //telemetry.update();
+                        spindexer.setPower(0.173);
+                        intake.setPower(0);
+                        intakeStep++;
+                        sequenceStartTime = System.currentTimeMillis();
+                        break;
+                    case 3:
+                        intakeSequenceComplete = true;
+                        intakeSequenceActive = false;
+                        sequenceStartTime = 0;
+                        intakeStep = 0;
+                        break;
+                }}
+
+
+
+
+
+            /*if (gamepad1.y)
             {
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 switch (intakeStep)
@@ -570,7 +635,11 @@ public class lavaTele extends LinearOpMode {
                         intakeStep = 0;
                         break;
                 }
-            }
+
+
+
+
+            */
             else if (gamepad1.a)
             {
                 intake.setPower(-0.6);
