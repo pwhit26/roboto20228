@@ -103,12 +103,12 @@ public class newVolcano extends OpMode {
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
         shoot = new Pose(-52, 0, Math.toRadians(0));
-        shoot2 = new Pose(-38, 0, Math.toRadians(0));
+        shoot2 = new Pose(-52, 0, Math.toRadians(0));
         preScoop1 = new Pose(-47, -10, Math.toRadians(-39));
         scoop1 = new Pose(-30,-32, Math.toRadians(-40));
         scoop2 = new Pose(-30, -34, Math.toRadians(-40));
-        scoop3 = new Pose(-20, -40, Math.toRadians(-40));
-        parky = new Pose(-40, 0, Math.toRadians(-45));
+        scoop3 = new Pose(-30, -36, Math.toRadians(-40));
+        parky = new Pose(-30, -32, Math.toRadians(-40));
 
 
         /*shootAgain = new Pose (80, -10, Math.toRadians(24));
@@ -373,7 +373,6 @@ public class newVolcano extends OpMode {
                 }
                 break;
             case 17:
-                /*
                 follower.followPath(shootPre2);
                 pathStage++;
                 startTime = System.currentTimeMillis();
@@ -381,7 +380,6 @@ public class newVolcano extends OpMode {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }*/
-                /*
                 telemetry.addData("Status", "Starting second path");
                 break;
 
@@ -448,7 +446,7 @@ public class newVolcano extends OpMode {
 
             case 24: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1350); //ball 3
+                turret.setVelocity(1400); //ball 3
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -502,7 +500,7 @@ public class newVolcano extends OpMode {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }*/
-                /*
+
                 telemetry.addData("Status", "move move");
                 break;
 
@@ -517,8 +515,6 @@ public class newVolcano extends OpMode {
 
             case 31: // All paths complete
                 // Robot is stopped, do nothing
-
-                 */
                 terminateOpModeNow();
                 return;
         }
