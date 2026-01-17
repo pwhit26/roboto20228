@@ -163,10 +163,7 @@ public class lavaTele extends LinearOpMode {
                 }
             }
 
-            if (gamepad1.left_bumper && (limelight==null || limelight.getLatestResult()==null))
-            {
-                turret.setTargetPosition(0);
-            }
+
 
             //Shoot macro
             if (gamepad1.right_bumper) {
@@ -536,7 +533,7 @@ public class lavaTele extends LinearOpMode {
                     case 0:
                         intake.setPower(0);
                         spindexer.setPower(0.1775);
-                        if (elapsedTime >= 50) {
+                        if (elapsedTime >= 150) {
                             intakeStep++;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -547,11 +544,10 @@ public class lavaTele extends LinearOpMode {
                         {
                             intake.setPower(0.63);
                             spindexer.setPower(0);
-                            wasColorDetected = true;
                             telemetry.addData("Intake Power", intake.getPower());
                             //telemetry.update();
                         }
-                        if (isSpotTaken())
+                        else if (isSpotTaken())
                         {
                             intakeStep++;
                             sequenceStartTime = System.currentTimeMillis();
@@ -574,7 +570,7 @@ public class lavaTele extends LinearOpMode {
                         telemetry.addData("Intake Power", intake.getPower());
                         telemetry.addData("Ball Count:", ballcount);
                         //telemetry.update();
-                        spindexer.setPower(0.173);
+                        spindexer.setPower(0.181);
                         intake.setPower(0);
                         intakeStep++;
                         sequenceStartTime = System.currentTimeMillis();
@@ -640,11 +636,15 @@ public class lavaTele extends LinearOpMode {
 
 
             */
-            else if (gamepad1.a)
+            else if (gamepad1.a && !gamepad1.left_bumper)
             {
                 intake.setPower(-0.6);
             }
-            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a){
+            else if (gamepad1.left_bumper)
+            {
+                intake.setPower(0.6);
+            }
+            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a && !gamepad1.left_bumper){
                 intake.setPower(0);
                 spindexer.setPower(0);
             }
@@ -778,8 +778,9 @@ public class lavaTele extends LinearOpMode {
             velocity = velocity -40;
         }
         if (dist > 1.8 && dist < 2.75)
+
         {
-            velocity = velocity - 100;
+            velocity = velocity -50;
         }
         if (dist>3)
         {
