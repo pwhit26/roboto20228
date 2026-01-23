@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.LAVA;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -17,10 +18,12 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
+import java.util.List;
+
 //RED APRILTAG LIMELIGHT
 //Unchanged
 //JULIANNA
-@TeleOp(group = "AAA", name ="lavaTele")
+@TeleOp(group = "AAA", name ="LavaTele")
 public class lavaTele extends LinearOpMode {
     private Follower follower;
     private static final double MIN_COLOR_THRESHOLD = 0.5; // 50% of total area
@@ -46,6 +49,7 @@ public class lavaTele extends LinearOpMode {
     private double txDeg, tyDeg;
     private double v;
     private int initialPos=0;
+    long Id;
 
 
     Servo angleTurret0, angleTurret1, popUp;
@@ -138,29 +142,50 @@ public class lavaTele extends LinearOpMode {
                 telemetry.addData("Limelight", "Got result: %s", ll != null ? "Valid" : "Null");
 
                 if (ll != null) {
-                    boolean isValid = ll.isValid();
-                    double tx = ll.getTx();
-                    double ty = ll.getTy();
-                    double ta = ll.getTa();
-                    txDeg=tx;
-                    tyDeg=ty;
+                    List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
 
-                    angleAdjust(tx);
-                    double dist=calculateDistance(ty, tx);
-                    setTurretAngle(dist);
-                    if (gamepad1.b)
-                    {
-                        setTurretVelocity(dist); //not sure if i didnt fuck this up sorry
+                    for (LLResultTypes.FiducialResult fr : fiducials) {
+                        long tagId = fr.getFiducialId(); // This is your AprilTag ID
+                        Id = tagId;
+                        telemetry.addData("Detected Tag ID", tagId);
                     }
-                    else
+                    if (Id == 24)
                     {
-                        turret.setVelocity(0);
+                        boolean isValid = ll.isValid();
+                        double tx = ll.getTx();
+                        double ty = ll.getTy();
+                        double ta = ll.getTa();
+                        txDeg=tx;
+                        tyDeg=ty;
+
+
+                        double dist=calculateDistance(ty, tx);
+                        angleAdjust(tx, dist);
+                        setTurretAngle(dist);
+                        if (gamepad1.b)
+                        {
+                            setTurretVelocity(dist); //not sure if i didnt fuck this up sorry
+                        }
+                        else
+                        {
+                            turret.setVelocity(0);
+                        }
+
+                        telemetry.addData("LL Valid", isValid);
+                        //telemetry.addData("AprilTag ID", tid);
+                        telemetry.addData("TX/TY/TA", "%.2f / %.2f / %.2f", tx, ty, ta);
+                        telemetry.addData("Distance from Apriltag/Angle 0/Angle1:", "%.2f / %.2f / %.2f", dist, angleTurret0.getPosition(), angleTurret1.getPosition());
+                    }
+                    else {
+                        if (gamepad1.b)
+                        {
+                            turret.setVelocity(1500);
+                        }
+                        else {
+                            turret.setVelocity(0);
+                        }
                     }
 
-                    telemetry.addData("LL Valid", isValid);
-                    //telemetry.addData("AprilTag ID", tid);
-                    telemetry.addData("TX/TY/TA", "%.2f / %.2f / %.2f", tx, ty, ta);
-                    telemetry.addData("Distance from Apriltag/Angle 0/Angle1:", "%.2f / %.2f / %.2f", dist, angleTurret0.getPosition(), angleTurret1.getPosition());
                 }
             }
 
@@ -346,7 +371,7 @@ public class lavaTele extends LinearOpMode {
 
 
 
-           //Turret Power
+            //Turret Power
             if (gamepad1.b && (limelight==null || limelight.getLatestResult()==null))
             {
                 turret.setPower(0.6);
@@ -362,7 +387,7 @@ public class lavaTele extends LinearOpMode {
                 setInitialPos();
 
 
-            //    spindexer.setTargetPosition(spindexer.getCurrentPosition()+20);
+                //    spindexer.setTargetPosition(spindexer.getCurrentPosition()+20);
 
             }
 
@@ -725,29 +750,51 @@ public class lavaTele extends LinearOpMode {
         telemetry.update();
         return false;
     }
-    private void angleAdjust(double tx)
+    private void angleAdjust(double tx, double dist)
     {
-        if (tx>5)
+        if (dist >2.2 && dist <2.9)
         {
-            turnTurret.setPower(0.18);
+            if (tx>3)
+            {
+                turnTurret.setPower(0.175);
+            }
+            else if (tx<-3)
+            {
+                turnTurret.setPower(-0.175);
+            }
+            else {
+                turnTurret.setPower(0);
+            }
         }
-        else if (tx<0)
-        {
-            turnTurret.setPower(-0.18);
+        else {
+            if (tx>1)
+            {
+                turnTurret.setPower(0.175);
+            }
+            else if (tx<-4)
+            {
+                turnTurret.setPower(-0.175);
+            }
+            else
+            {
+                turnTurret.setPower(0);
+            }
         }
-        else
-        {
-            turnTurret.setPower(0);
-        }
+
     }
 
 
     private void setTurretAngle(double dist)
     {
-        if (dist>2)
+        if (dist>=2.9)
         {
             angleTurret0.setPosition(0.01);
             angleTurret1.setPosition(0.99);
+        }
+        if (dist>2.2 && dist<2.9)
+        {
+            angleTurret0.setPosition(0.02);
+            angleTurret1.setPosition(0.98);
         }
         else if (dist>1.5)
         {
@@ -780,7 +827,7 @@ public class lavaTele extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1367.6*(Math.pow(dist, 0.19183));//0.173 original
+        double velocity = 1367.6*(Math.pow(dist, 0.19183)) + 30;//0.173 original
         if (dist<=1.2)
         {
             velocity = velocity +35;
@@ -798,9 +845,9 @@ public class lavaTele extends LinearOpMode {
         {
             velocity = velocity -50;
         }
-        if (dist >2.5 && dist<2.9)
+        if (dist >=2.2 && dist<2.9)
         {
-            velocity = velocity + 10;
+            velocity = velocity + 5;
         }
         if (dist>3)
         {
