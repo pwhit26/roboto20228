@@ -93,7 +93,7 @@ public class PenguinosAuto extends OpMode {
         spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         spindexer.setTargetPosition(0);
         spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        spindexer.setPower(0.7);
+        spindexer.setPower(0.6);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
         //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");

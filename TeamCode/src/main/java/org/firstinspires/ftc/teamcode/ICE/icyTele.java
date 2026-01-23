@@ -226,7 +226,7 @@ public class icyTele extends LinearOpMode {
                     case 2:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.51); //ALL THE WAY UP
+                            popUp.setPosition(0.45); //ALL THE WAY UP
                             ballcount--;
                         }
                         if (elapsedTime >= 450) {
@@ -281,7 +281,7 @@ public class icyTele extends LinearOpMode {
                     case 1:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.51); //ALL THE WAY UP
+                            popUp.setPosition(0.45); //ALL THE WAY UP
                             ballcount--;
                         }
 
@@ -335,7 +335,7 @@ public class icyTele extends LinearOpMode {
                     case 1:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.51); //ALL THE WAY UP
+                            popUp.setPosition(0.45); //ALL THE WAY UP
                         }
 
                         if (elapsedTime >= 450) {
@@ -757,11 +757,11 @@ public class icyTele extends LinearOpMode {
         {
             if (tx>3)
             {
-                turnTurret.setPower(0.175);
+                turnTurret.setPower(0.173);
             }
             else if (tx<-3)
             {
-                turnTurret.setPower(-0.175);
+                turnTurret.setPower(-0.173);
             }
             else
             {
@@ -771,11 +771,11 @@ public class icyTele extends LinearOpMode {
         else {
             if (tx>5)
             {
-                turnTurret.setPower(0.175);
+                turnTurret.setPower(0.173);
             }
-            else if (tx<0)
+            else if (tx<-1)
             {
-                turnTurret.setPower(-0.175);
+                turnTurret.setPower(-0.173);
             }
             else
             {
@@ -793,7 +793,7 @@ public class icyTele extends LinearOpMode {
             angleTurret0.setPosition(0.01);
             angleTurret1.setPosition(0.99);
         }
-        if (dist>2.2 && dist<2.9)
+        else if (dist>2.2)
         {
             angleTurret0.setPosition(0.02);
             angleTurret1.setPosition(0.98);
@@ -853,7 +853,7 @@ public class icyTele extends LinearOpMode {
         }
         if (dist>3)
         {
-            velocity = velocity - 20;
+            velocity = velocity - 40;
         }
 
 

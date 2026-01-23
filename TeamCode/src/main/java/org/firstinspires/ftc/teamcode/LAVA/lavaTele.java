@@ -85,7 +85,7 @@ public class lavaTele extends LinearOpMode {
         turret.setDirection(DcMotorSimple.Direction.FORWARD);
         turret.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         turret.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
-        turret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1);
+        turret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.05);
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
@@ -225,7 +225,7 @@ public class lavaTele extends LinearOpMode {
                     case 2:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.51); //ALL THE WAY UP
+                            popUp.setPosition(0.45); //ALL THE WAY UP
                             ballcount--;
                         }
                         if (elapsedTime >= 450) {
@@ -280,7 +280,7 @@ public class lavaTele extends LinearOpMode {
                     case 1:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.51); //ALL THE WAY UP
+                            popUp.setPosition(0.45); //ALL THE WAY UP
                             ballcount--;
                         }
 
@@ -334,7 +334,7 @@ public class lavaTele extends LinearOpMode {
                     case 1:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.51); //ALL THE WAY UP
+                            popUp.setPosition(0.45); //ALL THE WAY UP 0.51
                         }
 
                         if (elapsedTime >= 450) {
@@ -756,24 +756,24 @@ public class lavaTele extends LinearOpMode {
         {
             if (tx>3)
             {
-                turnTurret.setPower(0.175);
+                turnTurret.setPower(0.173);
             }
             else if (tx<-3)
             {
-                turnTurret.setPower(-0.175);
+                turnTurret.setPower(-0.173);
             }
             else {
                 turnTurret.setPower(0);
             }
         }
         else {
-            if (tx>1)
+            if (tx>2)
             {
-                turnTurret.setPower(0.175);
+                turnTurret.setPower(0.173);
             }
             else if (tx<-4)
             {
-                turnTurret.setPower(-0.175);
+                turnTurret.setPower(-0.173);
             }
             else
             {
@@ -791,7 +791,7 @@ public class lavaTele extends LinearOpMode {
             angleTurret0.setPosition(0.01);
             angleTurret1.setPosition(0.99);
         }
-        if (dist>2.2 && dist<2.9)
+        else if (dist>2.2)
         {
             angleTurret0.setPosition(0.02);
             angleTurret1.setPosition(0.98);
@@ -851,7 +851,7 @@ public class lavaTele extends LinearOpMode {
         }
         if (dist>3)
         {
-            velocity = velocity - 20;
+            velocity = velocity - 40;
         }
 
 

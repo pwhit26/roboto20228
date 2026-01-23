@@ -99,7 +99,7 @@ public class PenguinoCleanseAuto extends OpMode {
         spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         spindexer.setTargetPosition(0);
         spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        spindexer.setPower(0.7);
+        spindexer.setPower(0.6);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
         //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
@@ -183,70 +183,108 @@ public class PenguinoCleanseAuto extends OpMode {
 
         telemetry.addData("Status", "Initialized");
         telemetry.update();
+
+            telemetry.addData("Status", "Initialized");
+
+            limelight = hardwareMap.get(Limelight3A.class, "limelight");
+
+            if (limelight != null) {
+                limelight.pipelineSwitch(1);
+                limelight.start();
+                telemetry.addData("Limelight", "Initialized - Pipeline: %d", 1);
+            } else {
+                telemetry.addData("Limelight", "Not found in hardware map!");
+            }
+
+            telemetry.update();
+
+    }
+
+    public void init_loop() {
+
+        if (limelight != null) {
+            LLResult ll = limelight.getLatestResult();
+            telemetry.addData("Limelight Result", ll != null ? "Valid" : "Null");
+
+            if (ll != null) {
+                List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
+                telemetry.addData("Tag Count", fiducials.size());
+
+                for (LLResultTypes.FiducialResult fr : fiducials) {
+                    long tagId = fr.getFiducialId();
+
+                    // Ignore tag 20, only accept 21–23
+                    if (tagId == 21 || tagId == 22 || tagId == 23) {
+                        Id = tagId;  // store valid tag
+                        telemetry.addData("Detected Tag ID", tagId);
+                    }
+                }
+            }
+        }
+
+        telemetry.update();
     }
 
     @Override
     public void start() {
         telemetry.addData("Status", "Starting...");
+        telemetry.update();
 
         if (limelight != null) {
-            limelight.pipelineSwitch(1);  // Changed to pipeline 0 for AprilTag
             limelight.start();
-            telemetry.addData("Limelight", "Initialized - Pipeline: %d", 1);
-        } else {
-            telemetry.addData("Limelight", "Not found in hardware map!");
         }
-        telemetry.update();
+        startTime = System.currentTimeMillis();  // <-- reset timer HERE
+        pathStage = 0;
+
+
+
     }
 
     @Override
     public void loop() {
+
+
         long elapsedTime = System.currentTimeMillis() - startTime;
-        switch (pathStage) {
-            case 0:
-                if (limelight!=null)
-                {
-                    LLResult ll = limelight.getLatestResult();
-                    telemetry.addData("Limelight", "Got result: %s", ll != null ? "Valid" : "Null");
-                    if (ll!=null)
-                    {
-                        List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
 
-                        for (LLResultTypes.FiducialResult fr : fiducials) {
-                            long tagId = fr.getFiducialId(); // This is your AprilTag ID
-                            if (tagId>20 && tagId<24)
-                            {
-                                Id = tagId;
-                            }
-                            else {
-                                Id=0;
-                            }
 
-                            telemetry.addData("Detected Tag ID", tagId);
-                        }
-                        if (Id == 21)
-                        {
-                            telemetry.addData("Motif: ", "Green Purple Purple");
-                            pathStage++;
-                        }
-                        else if (Id == 22)
-                        {
-                            telemetry.addData("Motif", "Purple Green Purple");
-                            pathStage++;
-                        }
-                        else if (Id == 23)
-                        {
-                            telemetry.addData("Motif", "Purple Purple Green");
-                            pathStage++;
-                        }
+        if (limelight != null) {
+            LLResult ll = limelight.getLatestResult();
+            if (ll != null) {
+                List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
+                for (LLResultTypes.FiducialResult fr : fiducials) {
+                    long tagId = fr.getFiducialId();
+                    if (tagId == 21 || tagId == 22 || tagId == 23) {
+                        Id = tagId;  // keep Id current
                     }
                 }
-                else if (elapsedTime>=800)
-                {
+            }
+        }
+
+        switch (pathStage) {
+            case 0:
+                telemetry.addData("Current Id", Id);
+
+                if (Id == 21) {
+                    telemetry.addData("Motif", "Green Purple Purple");
+                } else if (Id == 22) {
+                    telemetry.addData("Motif", "Purple Green Purple");
+                } else if (Id == 23) {
+                    telemetry.addData("Motif", "Purple Purple Green");
+                } else {
+                    telemetry.addData("Motif", "No valid tag yet");
+                   // telemetry.update();
+                    break; // stay here until a valid tag
+                }
+
+
+
+                // turned this time up to see the telemetry
+                if (elapsedTime >= 1800) {
                     pathStage++;
-                    startTime = System.currentTimeMillis();
+                    startTime = System.currentTimeMillis(); // reset timer for next stage
                 }
                 break;
+
             case 1: //little baby first move
 
                 follower.followPath(startShoot);
