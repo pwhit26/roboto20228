@@ -448,18 +448,18 @@ public class NewTestRPM extends LinearOpMode {
     }
     private boolean isTargetColorDetected() {
         // Get raw color values
-        int red = colorBack.red();
-        int green = colorBack.green();
-        int blue = colorBack.blue();
-        NormalizedRGBA colors = colorBack.getNormalizedColors();
-        if ((colors.blue)> colors.green && colors.blue>0.0013)
+        int red = color0.red();
+        int green = color0.green();
+        int blue = color0.blue();
+        NormalizedRGBA colors = color0.getNormalizedColors();
+        if ((colors.blue)> colors.green && colors.blue>0.0017)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
             telemetry.update();
             return true;
 
-        } else if(colors.green>(colors.blue) && colors.green>0.0013) {
+        } else if(colors.green>(colors.blue) && colors.green>0.00195) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -506,8 +506,8 @@ public class NewTestRPM extends LinearOpMode {
     {
         if (dist>2)
         {
-            angleTurret0.setPosition(0.02);
-            angleTurret1.setPosition(0.98);
+            angleTurret0.setPosition(0);
+            angleTurret1.setPosition(1);
         }
         else if (dist>1.5)
         {
@@ -521,19 +521,18 @@ public class NewTestRPM extends LinearOpMode {
         }
         else if (dist>0.75)
         {
-            angleTurret0.setPosition(0.11);
-            angleTurret1.setPosition(0.89);
+            angleTurret0.setPosition(0.1);
+            angleTurret1.setPosition(0.9);
         }
         else if (dist<=0.75){
-            angleTurret0.setPosition(0.13);
-            angleTurret1.setPosition(0.87);
+            angleTurret0.setPosition(0.12);
+            angleTurret1.setPosition(0.88);
         }
         else {
-            angleTurret0.setPosition(0.02);
-            angleTurret1.setPosition(0.98);
+            angleTurret0.setPosition(0.03);
+            angleTurret1.setPosition(0.97);
         }
     }
-
     private void setTurretVelocity(double dist)
     {
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
@@ -554,8 +553,8 @@ public class NewTestRPM extends LinearOpMode {
 
     private boolean greenDetect()
     {
-        NormalizedRGBA colors = colorBack.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>0.0013) {
+        NormalizedRGBA colors = color0.getNormalizedColors();
+        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.00205) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -569,9 +568,9 @@ public class NewTestRPM extends LinearOpMode {
     }
     private boolean purpleDetect()
     {
-        NormalizedRGBA colors = colorBack.getNormalizedColors();
+        NormalizedRGBA colors = color0.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.0013)
+        if ((colors.blue)> colors.green && colors.blue>0.0018)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);

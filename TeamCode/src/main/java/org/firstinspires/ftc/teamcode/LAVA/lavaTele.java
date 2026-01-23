@@ -57,7 +57,7 @@ public class lavaTele extends LinearOpMode {
         //drive motor init
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        frontRight.setDirection(DcMotorSimple.Direction.FORWARD);
+        frontRight.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight = hardwareMap.get(DcMotorEx.class, "rightBack");
         backRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         backRight.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -66,7 +66,7 @@ public class lavaTele extends LinearOpMode {
         frontLeft.setDirection(DcMotorSimple.Direction.FORWARD);
         backLeft = hardwareMap.get(DcMotorEx.class, "leftBack");
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
-        backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        backLeft.setDirection(DcMotorSimple.Direction.FORWARD);
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
@@ -80,7 +80,8 @@ public class lavaTele extends LinearOpMode {
         turret = hardwareMap.get(DcMotorEx.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.FORWARD);
         turret.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
-        turret.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
+        turret.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
+        turret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1);
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
@@ -666,6 +667,18 @@ public class lavaTele extends LinearOpMode {
             {
                 isSpotTaken();
             }
+            if (gamepad2.left_bumper)
+            {
+                spindexer.setPower(-0.2);
+                popUp.setPosition(0);
+            }
+            if (gamepad2.b)
+            {
+                purpleDetect();
+            }
+            if (gamepad2.a){
+                greenDetect();
+            }
 
             telemetry.update();
 
@@ -714,11 +727,11 @@ public class lavaTele extends LinearOpMode {
     }
     private void angleAdjust(double tx)
     {
-        if (tx>3)
+        if (tx>5)
         {
             turnTurret.setPower(0.18);
         }
-        else if (tx<-3)
+        else if (tx<0)
         {
             turnTurret.setPower(-0.18);
         }
@@ -733,31 +746,31 @@ public class lavaTele extends LinearOpMode {
     {
         if (dist>2)
         {
-            angleTurret0.setPosition(0.02);
-            angleTurret1.setPosition(0.98);
+            angleTurret0.setPosition(0.01);
+            angleTurret1.setPosition(0.99);
         }
         else if (dist>1.5)
         {
-            angleTurret0.setPosition(0.025);
-            angleTurret1.setPosition(0.975);
+            angleTurret0.setPosition(0.05);
+            angleTurret1.setPosition(0.95);
         }
         else if (dist>1)
         {
-            angleTurret0.setPosition(0.045);
-            angleTurret1.setPosition(0.955);
+            angleTurret0.setPosition(0.07);
+            angleTurret1.setPosition(0.93);
         }
         else if (dist>0.75)
         {
-            angleTurret0.setPosition(0.09);
-            angleTurret1.setPosition(0.91);
+            angleTurret0.setPosition(0.1);
+            angleTurret1.setPosition(0.9);
         }
         else if (dist<=0.75){
-            angleTurret0.setPosition(0.11);
-            angleTurret1.setPosition(0.89);
+            angleTurret0.setPosition(0.12);
+            angleTurret1.setPosition(0.88);
         }
         else {
-            angleTurret0.setPosition(0.02);
-            angleTurret1.setPosition(0.98);
+            angleTurret0.setPosition(0.03);
+            angleTurret1.setPosition(0.97);
         }
     }
 
@@ -767,48 +780,64 @@ public class lavaTele extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1392.5*(Math.pow(dist, 0.173));//0.173 original
+        double velocity = 1367.6*(Math.pow(dist, 0.19183));//0.173 original
+        if (dist<=1.2)
+        {
+            velocity = velocity +35;
+        }
         if (dist >1.2 && dist <1.5)
         {
-            velocity = velocity -60;
+            velocity = velocity + 20;
         }
 
         if (dist >=1.5 && dist <= 1.8)
         {
-            velocity = velocity -40;
+            velocity = velocity - 20;
         }
-        if (dist > 1.8 && dist < 2.75)
-
+        if (dist > 1.8 && dist < 2.2)
         {
             velocity = velocity -50;
         }
+        if (dist >2.5 && dist<2.9)
+        {
+            velocity = velocity + 10;
+        }
         if (dist>3)
         {
-            velocity = velocity + 50;
+            velocity = velocity - 20;
         }
-        int tolerance = (int)(turret.getVelocity()-velocity);
 
-        if (tolerance > 10)
-        {
-            velocity = velocity - tolerance;
-        }
-        else if (tolerance < -10)
-        {
-            velocity = velocity - tolerance;
-        }
+
+
 
 
 
         v = velocity;
-        turret.setVelocity((int)Math.round(velocity));
-        telemetry.addData("velocity", (int)Math.round(velocity));
+        turret.setVelocity(velocity);
+        telemetry.addData("Target velocity", (int)Math.round(velocity));
+        telemetry.addData("Real velocity: ", (int)turret.getVelocity());
         telemetry.update();
     }
+    /* int tolerance = (int)(turret.getVelocity()-velocity);
+
+        if (tolerance > 15)
+        {
+            turret.setVelocity((int)Math.round(velocity));
+            turret.setVelocity(turret.getVelocity() - tolerance); //velocity = velocity - tolerance;
+        }
+        else if (tolerance < -15)
+        {
+            turret.setVelocity((int)Math.round(velocity));
+            turret.setVelocity(turret.getVelocity() - tolerance);//velocity = velocity - tolerance;
+        }
+        else {
+            turret.setVelocity((int)Math.round(velocity));
+        }*/
 
     private boolean greenDetect()
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.00205) {
+        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.005) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -824,7 +853,7 @@ public class lavaTele extends LinearOpMode {
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.0018)
+        if ((colors.blue)> colors.green && colors.blue>0.003)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);

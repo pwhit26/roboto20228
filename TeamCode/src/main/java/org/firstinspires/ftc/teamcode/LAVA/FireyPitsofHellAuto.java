@@ -105,9 +105,9 @@ public class FireyPitsofHellAuto extends OpMode {
         shoot = new Pose(9, 0, Math.toRadians(-23.5));
         shoot2 = new Pose(9, 0, Math.toRadians(-24));
         preScoop1 = new Pose(24.5, -10, Math.toRadians(-90));
-        scoop1 = new Pose(25,-44, Math.toRadians(-90));
-        scoop2 = new Pose(25, -45, Math.toRadians(-90));
-        scoop3 = new Pose(25, -48, Math.toRadians(-90));
+        scoop1 = new Pose(25,-45, Math.toRadians(-90));
+        scoop2 = new Pose(25, -46, Math.toRadians(-90));
+        scoop3 = new Pose(25, -49.5, Math.toRadians(-90));
         parky = new Pose(23, 0, Math.toRadians(0));
 
 
@@ -201,7 +201,7 @@ public class FireyPitsofHellAuto extends OpMode {
             case 1: // start turret
 
                 if (!follower.isBusy()) {
-                    turret.setVelocity(1480); //ball 1
+                    turret.setVelocity(1455); //ball 1
                     angleTurret0.setPosition(0.015);
                     angleTurret1.setPosition(0.985);
                 }
@@ -233,7 +233,7 @@ public class FireyPitsofHellAuto extends OpMode {
 
             case 4: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1645); //ball 2
+                turret.setVelocity(1655); //ball 2
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();

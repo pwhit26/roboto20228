@@ -93,7 +93,7 @@ public class PenguinosAuto extends OpMode {
         spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         spindexer.setTargetPosition(0);
         spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        spindexer.setPower(0.5);
+        spindexer.setPower(0.7);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
         //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
@@ -105,10 +105,11 @@ public class PenguinosAuto extends OpMode {
         shoot = new Pose(9, 0, Math.toRadians(24.5));
         shoot2 = new Pose(9, 0, Math.toRadians(25));
         preScoop1 = new Pose(24.5, 10, Math.toRadians(90));
-        scoop1 = new Pose(25,44, Math.toRadians(90));
-        scoop2 = new Pose(25, 46, Math.toRadians(90));
-        scoop3 = new Pose(25, 49, Math.toRadians(90));
-        parky = new Pose(23, 0, Math.toRadians(0));
+        scoop1 = new Pose(24.5,44, Math.toRadians(90));
+        scoop2 = new Pose(24.5, 47, Math.toRadians(90));
+        scoop3 = new Pose(24.5, 49, Math.toRadians(90));
+        parky = new Pose(20, 0, Math.toRadians(0));
+
 
 
         /*shootAgain = new Pose (80, -10, Math.toRadians(24));
@@ -201,7 +202,7 @@ public class PenguinosAuto extends OpMode {
             case 1: // start turret
 
                 if (!follower.isBusy()) {
-                    turret.setVelocity(1480); //ball 1
+                    turret.setVelocity(1485); //ball 1
                     angleTurret0.setPosition(0.015);
                     angleTurret1.setPosition(0.985);
                 }
@@ -216,7 +217,7 @@ public class PenguinosAuto extends OpMode {
                 if (!follower.isBusy()) {
                     spindexer.setTargetPosition(95);
                 }
-                if (elapsedTime>=1600)
+                if (elapsedTime>=1400)
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -233,7 +234,7 @@ public class PenguinosAuto extends OpMode {
 
             case 4: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1645); //ball 2
+                turret.setVelocity(1635); //ball 2
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -262,7 +263,7 @@ public class PenguinosAuto extends OpMode {
 
             case 7: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1640); //ball 3
+                turret.setVelocity(1630); //ball 3
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -337,7 +338,7 @@ public class PenguinosAuto extends OpMode {
                 elapsedTime = System.currentTimeMillis() - startTime;
 
                 // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1200) {
+                if (elapsedTime >= 1400) {
                     intake.setPower(0);
                     spindexer.setTargetPosition(700);
                     pathStage++;
@@ -351,7 +352,7 @@ public class PenguinosAuto extends OpMode {
                     spindexer.setTargetPosition(700);
                     follower.followPath(intake2);
                 }
-                if (elapsedTime >= 1050) {
+                if (elapsedTime >= 1450) {
                     intake.setPower(0);
                     spindexer.setTargetPosition(875);
                     pathStage++;
@@ -386,7 +387,7 @@ public class PenguinosAuto extends OpMode {
 
             case 18: // start turret
                 if (!follower.isBusy()) {
-                    turret.setVelocity(1430); //ball 1
+                    turret.setVelocity(1425); //ball 1
                     angleTurret0.setPosition(0.015);
                     angleTurret1.setPosition(0.985);
                 }
@@ -418,7 +419,7 @@ public class PenguinosAuto extends OpMode {
 
             case 21: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1630); //ball 2
+                turret.setVelocity(1665); //ball 2
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -447,7 +448,7 @@ public class PenguinosAuto extends OpMode {
 
             case 24: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1670); //ball 3
+                turret.setVelocity(1660); //ball 3
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();

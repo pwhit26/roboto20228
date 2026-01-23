@@ -102,11 +102,11 @@ public class newVolcano extends OpMode {
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
-        shoot = new Pose(-52, 0, Math.toRadians(0));
-        shoot2 = new Pose(-52, 0, Math.toRadians(0));
+        shoot = new Pose(-50, 0, Math.toRadians(0));
+        shoot2 = new Pose(-50, 0, Math.toRadians(0));
         preScoop1 = new Pose(-47, -10, Math.toRadians(-39));
         scoop1 = new Pose(-30,-32, Math.toRadians(-40));
-        scoop2 = new Pose(-30, -34, Math.toRadians(-40));
+        scoop2 = new Pose(-30, -33, Math.toRadians(-40));
         scoop3 = new Pose(-30, -36, Math.toRadians(-40));
         parky = new Pose(-30, -32, Math.toRadians(-40));
 
@@ -385,7 +385,7 @@ public class newVolcano extends OpMode {
 
             case 18: // start turret
                 if (!follower.isBusy()) {
-                    turret.setVelocity(1300); //ball 1
+                    turret.setVelocity(1350); //ball 1
                     angleTurret0.setPosition(0.015);
                     angleTurret1.setPosition(0.985);
                 }
