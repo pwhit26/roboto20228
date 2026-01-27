@@ -705,6 +705,17 @@ public class icyTele extends LinearOpMode {
             if (gamepad2.a){
                 greenDetect();
             }
+            if (gamepad2.dpad_left)
+            {
+                turnTurret.setPower(-0.18);
+            }
+            else if (gamepad2.dpad_right)
+            {
+                turnTurret.setPower(0.18);
+            }
+            else {
+
+            }
 
             telemetry.update();
 
