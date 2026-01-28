@@ -105,7 +105,7 @@ public class PenguinoCleanseAuto extends OpMode {
         spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         spindexer.setTargetPosition(0);
         spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        spindexer.setPower(0.55);
+        spindexer.setPower(0.45);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
         //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
@@ -116,13 +116,13 @@ public class PenguinoCleanseAuto extends OpMode {
         start = new Pose(0, 0, Math.toRadians(0));
 
         shoot = new Pose(9, 0, Math.toRadians(24.5));
-        jiggle = new Pose (5, 0, Math.toRadians(25));
-        shoot2 = new Pose(9, 0, Math.toRadians(25));
+        jiggle = new Pose (5, 0, Math.toRadians(24.5));
+        shoot2 = new Pose(9, 0, Math.toRadians(24.5));
         preScoop1 = new Pose(24.5, 10, Math.toRadians(90));
         scoop1 = new Pose(24.5,43, Math.toRadians(90));
         scoop2 = new Pose(24.5, 45, Math.toRadians(90));
         scoop3 = new Pose(24.5, 48, Math.toRadians(90));
-        parky = new Pose(20, 0, Math.toRadians(0));
+        parky = new Pose(23, 0, Math.toRadians(0));
 
 
 
@@ -312,7 +312,7 @@ public class PenguinoCleanseAuto extends OpMode {
                 break;
 
             case 1: //little baby first move
-                turret.setVelocity(1520); //ball 1
+                turret.setVelocity(1530); //ball 1
                 follower.followPath(startShoot);
                 if (elapsedTime >= 800) {
                     pathStage++;
@@ -386,6 +386,8 @@ public class PenguinoCleanseAuto extends OpMode {
 
 
             case 5: //pop up shoot
+                angleTurret0.setPosition(0.015);
+                angleTurret1.setPosition(0.985);
                 popUp.setPosition(0.47);
                 if (elapsedTime >= 700) {
                     pathStage++;
@@ -395,7 +397,7 @@ public class PenguinoCleanseAuto extends OpMode {
 
             case 6: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1580); //ball 2
+                turret.setVelocity(1605); //ball 2
                 if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -450,7 +452,7 @@ public class PenguinoCleanseAuto extends OpMode {
 
             case 9: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1610); //ball 3
+                turret.setVelocity(1640); //ball 3
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -539,7 +541,7 @@ public class PenguinoCleanseAuto extends OpMode {
                 elapsedTime = System.currentTimeMillis() - startTime;
 
                 // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1400) {
+                if (elapsedTime >= 1450) {
                     intake.setPower(0);
                     spindexer.setTargetPosition(700);
                     pathStage++;
@@ -553,7 +555,7 @@ public class PenguinoCleanseAuto extends OpMode {
                     spindexer.setTargetPosition(700);
                     follower.followPath(intake2);
                 }
-                if (elapsedTime >= 1450) {
+                if (elapsedTime >= 1470) {
                     intake.setPower(0);
                     spindexer.setTargetPosition(875);
                     pathStage++;
@@ -566,7 +568,7 @@ public class PenguinoCleanseAuto extends OpMode {
                     intake.setPower(0.4);
                     follower.followPath(intake3);
                 }
-                if (elapsedTime>=1950)
+                if (elapsedTime>=1850)
                 {
                     turret.setVelocity(1460);
                     intake.setPower(0);
@@ -577,7 +579,7 @@ public class PenguinoCleanseAuto extends OpMode {
 
             case 19:
                 follower.followPath(shootPre2);
-                turret.setVelocity(1530);
+                turret.setVelocity(1540);
                 //startTime = System.currentTimeMillis();
                 if (elapsedTime >= 600) {
                     pathStage++;
@@ -586,8 +588,7 @@ public class PenguinoCleanseAuto extends OpMode {
                 telemetry.addData("Status", "Starting second path");
                 break;
             case 20:
-                follower.followPath(postJiggle);
-                spindexer.setTargetPosition(980);
+                spindexer.setTargetPosition(990);
                 pathStage++;
                 startTime = System.currentTimeMillis();
                 break;
@@ -597,148 +598,167 @@ public class PenguinoCleanseAuto extends OpMode {
                     angleTurret0.setPosition(0.015);
                     angleTurret1.setPosition(0.985);
                 }
+
                 if (elapsedTime >= 900) {
-                    // --- RESET spindexer coordinate system for second half ---
-                    /*spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-                    spindexer.setTargetPosition(0);
-                    spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                    spindexer.setPower(0.55);*/
+                    // --- Begin physical re-home of spindexer ---
+                    spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                    spindexer.setPower(0.15);
 
-                    sortStep = 0;
-                    slotAlreadyChecked = -1;
-                    secondSlotChecked = -1;
+                    // spin slowly until a ball is seen → this is real slot zero
+                    if (greenDetect() || purpleDetect()) {
+                        spindexer.setPower(0);
 
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
+                        spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                        spindexer.setTargetPosition(0);
+                        spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                        spindexer.setPower(0.43);
+
+                        sortStep = 0;
+                        slotAlreadyChecked = -1;
+                        secondSlotChecked = -1;
+
+                        pathStage++;
+                        startTime = System.currentTimeMillis();
+                    }
                 }
                 break;
 
 
-            case 22: //spin to first spot
+
+            case 22: // second-half: find first correct ball
+                elapsedTime = System.currentTimeMillis() - startTime;
+
                 wantGreen = status21;
                 wantPurple = (status22 || status23);
 
-                // ---- Choose target based on sortStep ----
-                if (sortStep == 0) {
-                    spindexer.setTargetPosition(980);
-                }
-                else if (sortStep == 1) {
-                    spindexer.setTargetPosition(1160);
-                }
-                else if (sortStep == 2) {
-                    spindexer.setTargetPosition(1340);
-                }
+                if (sortStep == 0) spindexer.setTargetPosition(0);
+                else if (sortStep == 1) spindexer.setTargetPosition(185);
+                else if (sortStep == 2) spindexer.setTargetPosition(360);
 
-                // ---- Check if correct color found ----
-                if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
-                    slotAlreadyChecked = sortStep;
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                    sortStep = 0;  // reset for next cycle
-                    break;
-                }
-
-                // ---- If time passed, advance to next slot ----
-                if (elapsedTime > 400) {
-                    startTime = System.currentTimeMillis(); // reset timer for next slot
-                    sortStep++;
-
-                    // If we've checked all 3 slots, give up and move on
-                    if (sortStep > 2) {
-                        pathStage++;
+                // Only check color once spindexer finished moving
+                if (!spindexer.isBusy()) {
+                    if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
+                        slotAlreadyChecked = sortStep;
                         sortStep = 0;
-                        slotAlreadyChecked = 0;
+                        pathStage++;
+                        startTime = System.currentTimeMillis();
+                        break;
                     }
                 }
 
-                break;
+                if (elapsedTime > 500) {
+                    startTime = System.currentTimeMillis();
+                    sortStep++;
 
-            case 23: //pop up shoot
-                popUp.setPosition(0.47);
-                if (elapsedTime >= 700) {
+                    if (sortStep > 2) {
+                        sortStep = 0;
+                        slotAlreadyChecked = -1;
+                        pathStage++;
+                    }
+                }
+                break;
+            case 23:
+                turnTurret.setTargetPosition(0);
+                if (elapsedTime>=300)
+                {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 24: //pop up down
+            case 24: // pop up shoot
+                popUp.setPosition(0.48);
+                if (elapsedTime >= 800) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+
+
+            case 25: // pop down + spin shooter
                 popUp.setPosition(0);
-                turret.setVelocity(1665); //ball 2
-                if (elapsedTime >= 700) {
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 25: //spindex to next spot
+            case 26: // move from jiggle to shoot2
+                follower.followPath(postJiggle);
+                turret.setVelocity(1685);
+                if (elapsedTime>= 400)
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+
+
+            case 27: // second slot of second-half sort
+                elapsedTime = System.currentTimeMillis() - startTime;
+
                 wantGreen = status22;
                 wantPurple = (status21 || status23);
 
-                // ---- Choose target based on sortStep ----
-                if (sortStep == 0 && slotAlreadyChecked != 0) {
-                    spindexer.setTargetPosition(980);
-                }
-                else if (sortStep == 1 && slotAlreadyChecked != 1) {
-                    spindexer.setTargetPosition(1160);
-                }
-                else if (sortStep == 2 && slotAlreadyChecked != 2) {
-                    spindexer.setTargetPosition(1340);
-                }
+                if (sortStep == 0 && slotAlreadyChecked != 0) spindexer.setTargetPosition(0);
+                else if (sortStep == 1 && slotAlreadyChecked != 1) spindexer.setTargetPosition(185);
+                else if (sortStep == 2 && slotAlreadyChecked != 2) spindexer.setTargetPosition(360);
 
-                // ---- Check if correct color found ----
-                if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
-                    secondSlotChecked = sortStep;
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                    sortStep = 0;  // reset for next cycle
-                    break;
-                }
-
-                // ---- If time passed, advance to next slot ----
-                if (elapsedTime > 400) {
-                    startTime = System.currentTimeMillis(); // reset timer for next slot
-                    sortStep++;
-
-                    // If we've checked all 3 slots, give up and move on
-                    if (sortStep > 2) {
-                        pathStage++;
+                if (!spindexer.isBusy()) {
+                    if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
+                        secondSlotChecked = sortStep;
                         sortStep = 0;
+                        pathStage++;
+                        startTime = System.currentTimeMillis();
+                        break;
                     }
                 }
 
+                if (elapsedTime > 500) {
+                    startTime = System.currentTimeMillis();
+                    sortStep++;
+
+                    if (sortStep > 2) {
+                        sortStep = 0;
+                        pathStage++;
+                    }
+                }
                 break;
 
-            case 26: //pop up shoot
-                popUp.setPosition(0.47);
-                if (elapsedTime >= 700) {
+
+            case 28: //pop up shoot
+                popUp.setPosition(0.48);
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 27: //pop up down
+            case 29: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1660); //ball 3
-                if (elapsedTime >= 700) {
+                turret.setVelocity(1670); //ball 3
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
 
-            case 28: //spindex to next spot
+            case 30: //spindex to next spot
                 if (!follower.isBusy()) {
                     if (slotAlreadyChecked != 0 && secondSlotChecked != 0)
                     {
-                        spindexer.setTargetPosition(980);
+                        spindexer.setTargetPosition(0);
                     }
                     else if (slotAlreadyChecked != 1 && secondSlotChecked != 1)
                     {
-                        spindexer.setTargetPosition(1160);
+                        spindexer.setTargetPosition(185);
                     }
                     else
                     {
-                        spindexer.setTargetPosition(1340);
+                        spindexer.setTargetPosition(360);
                     }
                 }
                 if (elapsedTime>=400)
@@ -751,7 +771,7 @@ public class PenguinoCleanseAuto extends OpMode {
                 }
                 break;
 
-            case 29: //pop up shoot
+            case 31: //pop up shoot
                 popUp.setPosition(0.47);
                 if (elapsedTime >= 700) {
                     pathStage++;
@@ -759,7 +779,7 @@ public class PenguinoCleanseAuto extends OpMode {
                 }
                 break;
 
-            case 30: //pop up down
+            case 32: //pop up down
                 popUp.setPosition(0);
                 if (elapsedTime >= 700) {
                     pathStage++;
@@ -767,7 +787,7 @@ public class PenguinoCleanseAuto extends OpMode {
                 }
                 break;
 
-            case 31:
+            case 33:
                 if (!follower.isBusy()) {
                     turret.setVelocity(0);
                     //  follower.followPath(shootPre1);
@@ -777,7 +797,7 @@ public class PenguinoCleanseAuto extends OpMode {
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 32:
+            case 34:
                 follower.followPath(park);
                 pathStage++;
                 startTime = System.currentTimeMillis();
@@ -788,7 +808,7 @@ public class PenguinoCleanseAuto extends OpMode {
                 telemetry.addData("Status", "move move");
                 break;
 
-            case 33: //pop up down
+            case 35: //pop up down
                 popUp.setPosition(0);
                 if (elapsedTime >= 700) {
                     pathStage++;
@@ -797,7 +817,7 @@ public class PenguinoCleanseAuto extends OpMode {
                 break;
 
 
-            case 34: // All paths complete
+            case 36: // All paths complete
                 // Robot is stopped, do nothing
                 terminateOpModeNow();
                 return;
@@ -960,7 +980,7 @@ public class PenguinoCleanseAuto extends OpMode {
     private boolean greenDetect()
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.002) {
+        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.003) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);

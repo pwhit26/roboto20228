@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.ICE;
 // shoot far, grab preset
 import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
@@ -22,11 +23,14 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.List;
 
+//REAL CLOSE BLUE AUTO
+//GOOD AUTO USE THIS ONE!!!!!!
+//hellooooo
 @Autonomous
 public class icebergCleanse extends OpMode {
     private Follower follower;
-    private Pose start, shoot, shoot2, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain;
-    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3;
+    private Pose start, shoot, shoot2, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain, jiggle;
+    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3, postJiggle;
     String pathState="";
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
@@ -39,7 +43,12 @@ public class icebergCleanse extends OpMode {
     boolean shootSequenceActive = false;
     boolean shootSequenceComplete = true;
     boolean preScoStarted=false;
-    long Id;
+    long Id, IdGame;
+    boolean status21, status22, status23 = false;
+    int sortStep = 0;
+    boolean wantGreen, wantPurple;
+    int slotAlreadyChecked=0;
+    int secondSlotChecked = 0;
     //helloooo
 
     private double v;
@@ -70,6 +79,7 @@ public class icebergCleanse extends OpMode {
         intake = hardwareMap.get(DcMotorEx.class, "intake");
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
+
         turret=hardwareMap.get(DcMotorEx.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.FORWARD);
         turret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -95,7 +105,7 @@ public class icebergCleanse extends OpMode {
         spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         spindexer.setTargetPosition(0);
         spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        spindexer.setPower(0.5);
+        spindexer.setPower(0.45);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
         //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
@@ -104,13 +114,19 @@ public class icebergCleanse extends OpMode {
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
-        shoot = new Pose(-50, 0, Math.toRadians(90));
-        shoot2 = new Pose(-50, 0, Math.toRadians(90));
-        preScoop1 = new Pose(-50, 10, Math.toRadians(90));
-        scoop1 = new Pose(-50,30, Math.toRadians(90));
-        scoop2 = new Pose(-50, 33, Math.toRadians(90));
-        scoop3 = new Pose(-50 , 38, Math.toRadians(90));
-        parky = new Pose(-5, 0, Math.toRadians(90));
+
+        shoot = new Pose(-23, -30, Math.toRadians(90));
+        jiggle = new Pose (-27, -32, Math.toRadians(90));
+        shoot2 = new Pose(-25, -30, Math.toRadians(90));
+        preScoop1 = new Pose(-28, -15, Math.toRadians(90));
+        scoop1 = new Pose(-28,-4, Math.toRadians(90));
+        scoop2 = new Pose(-28, -1, Math.toRadians(90));
+        scoop3 = new Pose(-28, 0, Math.toRadians(90));
+        parky = new Pose(10, -25, Math.toRadians(90));
+
+
+
+
 
 
         /*shootAgain = new Pose (80, -10, Math.toRadians(24));
@@ -153,8 +169,12 @@ public class icebergCleanse extends OpMode {
                 .build();
 
         shootPre2 = follower.pathBuilder()
-                .addPath(new BezierLine(scoop3, shoot2))
-                .setLinearHeadingInterpolation(scoop3.getHeading(), shoot2.getHeading())
+                .addPath(new BezierLine(scoop3, jiggle))
+                .setLinearHeadingInterpolation(scoop3.getHeading(), jiggle.getHeading())
+                .build();
+        postJiggle = follower.pathBuilder()
+                .addPath(new BezierLine(jiggle, shoot2))
+                .setLinearHeadingInterpolation(jiggle.getHeading(), shoot2.getHeading())
                 .build();
         park = follower.pathBuilder()
                 .addPath(new BezierLine(shoot, parky))
@@ -175,6 +195,14 @@ public class icebergCleanse extends OpMode {
         turnTurret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         turnTurret.setTargetPosition(0);
 
+
+        telemetry.addData("Status", "Initialized");
+        telemetry.update();
+
+        telemetry.addData("Status", "Initialized");
+
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+
         if (limelight != null) {
             limelight.pipelineSwitch(1);
             limelight.start();
@@ -183,9 +211,8 @@ public class icebergCleanse extends OpMode {
             telemetry.addData("Limelight", "Not found in hardware map!");
         }
 
-
-        telemetry.addData("Status", "Initialized");
         telemetry.update();
+
     }
 
     public void init_loop() {
@@ -223,10 +250,14 @@ public class icebergCleanse extends OpMode {
         }
         startTime = System.currentTimeMillis();  // <-- reset timer HERE
         pathStage = 0;
+
+
+
     }
 
     @Override
     public void loop() {
+
 
         long elapsedTime = System.currentTimeMillis() - startTime;
 
@@ -243,9 +274,48 @@ public class icebergCleanse extends OpMode {
                 }
             }
         }
+
         switch (pathStage) {
-            case 0: //little baby first move
-                turret.setVelocity(1300);
+
+            case 0:
+                telemetry.addData("Current Id", Id);
+                IdGame = Id; //this may not work but doing this to set a variable for each game to reference as the motif Id in case it gets messed up
+
+                if (Id == 21) {
+                    telemetry.addData("Motif", "Green Purple Purple");
+                    status21 = true;
+                    status22 = false;
+                    status23 = false;
+                } else if (Id == 22) {
+                    telemetry.addData("Motif", "Purple Green Purple");
+                    status21 = false;
+                    status22 = true;
+                    status23 = false;
+                } else if (Id == 23) {
+                    telemetry.addData("Motif", "Purple Purple Green");
+                    status21 = false;
+                    status22 = false;
+                    status23 = true;
+                } else {
+                    telemetry.addData("Motif", "No valid tag yet");
+                    status21 = false;
+                    status22 = false;
+                    status23 = false;
+                    // telemetry.update();
+                    break; // stay here until a valid tag
+                }
+
+
+
+                // turned this time up to see the telemetry
+                if (elapsedTime >= 500) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis(); // reset timer for next stage
+                }
+                break;
+
+            case 1: //little baby first move
+                turret.setVelocity(1220); //ball 1
                 follower.followPath(startShoot);
                 if (elapsedTime >= 800) {
                     pathStage++;
@@ -254,100 +324,179 @@ public class icebergCleanse extends OpMode {
                 telemetry.addData("Status", "Finished first path");
                 break;
 
-            case 1: // start turret
+            case 2: // start turret
 
                 if (!follower.isBusy()) {
-                    //ball 1
-                    turret.setVelocity(1320);
-                    angleTurret0.setPosition(0.015);
-                    angleTurret1.setPosition(0.985);
+
+                    angleTurret0.setPosition(0.005);
+                    angleTurret1.setPosition(0.995);
                 }
-                if (elapsedTime >= 900) {
+                if (elapsedTime >= 600) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Starting to shoot");
                 break;
+            case 3:
+                if (!follower.isBusy())
+                {
+                    pathStage++;
+                    sortStep=0;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
 
-            case 2: //spin to first spot
-                if (!follower.isBusy()) {
+            case 4:  // Sort first ball cleanly
+
+                wantGreen = status21;
+                wantPurple = (status22 || status23);
+
+                // ---- Choose target based on sortStep ----
+                if (sortStep == 0) {
                     spindexer.setTargetPosition(95);
                 }
-                if (elapsedTime>=1600)
-                {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 3: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 4: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(1480); //ball 2
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 5: //spindex to next spot
-                if (!follower.isBusy()) {
-
+                else if (sortStep == 1) {
                     spindexer.setTargetPosition(275);
                 }
-                if (elapsedTime>=600)
-                {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 6: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 7: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(1370); //ball 3
-                if (elapsedTime >= 700) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-
-            case 8: //spindex to next spot
-                if (!follower.isBusy()) {
-
+                else if (sortStep == 2) {
                     spindexer.setTargetPosition(445);
                 }
-                if (elapsedTime>=600)
-                {
+
+                // ---- Check if correct color found ----
+                if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
+                    slotAlreadyChecked = sortStep;
                     pathStage++;
                     startTime = System.currentTimeMillis();
+                    sortStep = 0;  // reset for next cycle
+                    break;
                 }
+
+                // ---- If time passed, advance to next slot ----
+                if (elapsedTime > 400) {
+                    startTime = System.currentTimeMillis(); // reset timer for next slot
+                    sortStep++;
+
+                    // If we've checked all 3 slots, give up and move on
+                    if (sortStep > 2) {
+                        pathStage++;
+                        sortStep = 0;
+                        slotAlreadyChecked = 0;
+                    }
+                }
+
                 break;
 
-            case 9: //pop up shoot
-                popUp.setPosition(0.51);
+
+
+            case 5: //pop up shoot
+                angleTurret0.setPosition(0.015);
+                angleTurret1.setPosition(0.985);
+                popUp.setPosition(0.47);
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 10: //pop up down
+            case 6: //pop up down
+                popUp.setPosition(0);
+                turret.setVelocity(1405); //ball 2
+                if (elapsedTime >= 500) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 7: //spindex to next spot
+                wantGreen = status22;
+                wantPurple = (status21 || status23);
+
+                // ---- Choose target based on sortStep ----
+                if (sortStep == 0 && slotAlreadyChecked != 0) {
+                    spindexer.setTargetPosition(95);
+                }
+                else if (sortStep == 1 && slotAlreadyChecked != 1) {
+                    spindexer.setTargetPosition(275);
+                }
+                else if (sortStep == 2 && slotAlreadyChecked != 2) {
+                    spindexer.setTargetPosition(445);
+                }
+
+                // ---- Check if correct color found ----
+                if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
+                    secondSlotChecked = sortStep;
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                    sortStep = 0;  // reset for next cycle
+                    break;
+                }
+
+                // ---- If time passed, advance to next slot ----
+                if (elapsedTime > 400) {
+                    startTime = System.currentTimeMillis(); // reset timer for next slot
+                    sortStep++;
+
+                    // If we've checked all 3 slots, give up and move on
+                    if (sortStep > 2) {
+                        pathStage++;
+                        sortStep = 0;
+                    }
+                }
+
+                break;
+
+            case 8: //pop up shoot
+                popUp.setPosition(0.47);
+                if (elapsedTime >= 700) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 9: //pop up down
+                popUp.setPosition(0);
+                turret.setVelocity(1410); //ball 3
+                if (elapsedTime >= 700) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+
+            case 10: //spindex to next spot
+                if (!follower.isBusy()) {
+                    if (slotAlreadyChecked != 0 && secondSlotChecked != 0)
+                    {
+                        spindexer.setTargetPosition(95);
+                    }
+                    else if (slotAlreadyChecked != 1 && secondSlotChecked != 1)
+                    {
+                        spindexer.setTargetPosition(275);
+                    }
+                    else
+                    {
+                        spindexer.setTargetPosition(445);
+                    }
+                }
+                if (elapsedTime>=400)
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                    slotAlreadyChecked = 0;
+                    secondSlotChecked = 0;
+                    sortStep = 0;
+                }
+                break;
+
+            case 11: //pop up shoot
+                popUp.setPosition(0.47);
+                if (elapsedTime >= 700) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 12: //pop up down
                 popUp.setPosition(0);
                 if (elapsedTime >= 700) {
                     pathStage++;
@@ -355,7 +504,7 @@ public class icebergCleanse extends OpMode {
                 }
                 break;
 
-            case 11:
+            case 13:
                 if (!follower.isBusy()) {
                     turret.setVelocity(0);
                     //  follower.followPath(shootPre1);
@@ -365,26 +514,28 @@ public class icebergCleanse extends OpMode {
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 12:
+            case 14:
                 follower.followPath(shootPre1);
-                if (elapsedTime >= 800) {
+                spindexer.setPower(0.6);
+                pathStage++;
+                startTime = System.currentTimeMillis();
+                /*if (elapsedTime >= 1000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
-                }
+                }*/
                 telemetry.addData("Status", "Starting second path");
                 break;
-            case 13:
+            case 15:
                 if (!follower.isBusy()) {
+                    intake.setPower(0.4);
+                    spindexer.setTargetPosition(525);
                     pathStage++;
                 }
                 break;
-
-            case 14:
+            case 16:
 
                 // Start the path ONCE
                 if (!preScoStarted) {
-                    intake.setPower(0.4);
-                    spindexer.setTargetPosition(525);
                     follower.followPath(preSco1);
                     startTime = System.currentTimeMillis();
                     preScoStarted = true;
@@ -393,7 +544,7 @@ public class icebergCleanse extends OpMode {
                 elapsedTime = System.currentTimeMillis() - startTime;
 
                 // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1200) {
+                if (elapsedTime >= 1450) {
                     intake.setPower(0);
                     spindexer.setTargetPosition(700);
                     pathStage++;
@@ -401,136 +552,237 @@ public class icebergCleanse extends OpMode {
                     preScoStarted = false;
                 }
                 break;
-            case 15:
+            case 17:
                 if (!follower.isBusy()) {
                     intake.setPower(0.4);
                     spindexer.setTargetPosition(700);
                     follower.followPath(intake2);
                 }
-                if (elapsedTime >= 1250) {
+                if (elapsedTime >= 1470) {
                     intake.setPower(0);
                     spindexer.setTargetPosition(875);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 16:
+            case 18:
                 if (!follower.isBusy()) {
                     spindexer.setTargetPosition(880);
                     intake.setPower(0.4);
                     follower.followPath(intake3);
                 }
-                if (elapsedTime>=3050)
+                if (elapsedTime>=1850)
                 {
-                    turret.setVelocity(1280);
+                    turret.setVelocity(1360);
                     intake.setPower(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 17:
+
+            case 19:
                 follower.followPath(shootPre2);
-                pathStage++;
-                startTime = System.currentTimeMillis();
-                /*if (elapsedTime >= 1000) {
+                turret.setVelocity(1340);
+                //startTime = System.currentTimeMillis();
+                if (elapsedTime >= 600) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
-                }*/
+                }
                 telemetry.addData("Status", "Starting second path");
                 break;
+            case 20:
+                spindexer.setTargetPosition(990);
+                pathStage++;
+                startTime = System.currentTimeMillis();
+                break;
 
-            case 18: // start turret
+            case 21:
                 if (!follower.isBusy()) {
-                    turret.setVelocity(1320); //ball 1
                     angleTurret0.setPosition(0.015);
                     angleTurret1.setPosition(0.985);
                 }
+
                 if (elapsedTime >= 900) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
+                    // --- Begin physical re-home of spindexer ---
+                    spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                    spindexer.setPower(0.15);
+
+                    // spin slowly until a ball is seen → this is real slot zero
+                    if (greenDetect() || purpleDetect()) {
+                        spindexer.setPower(0);
+
+                        spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+                        spindexer.setTargetPosition(0);
+                        spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                        spindexer.setPower(0.43);
+
+                        sortStep = 0;
+                        slotAlreadyChecked = -1;
+                        secondSlotChecked = -1;
+
+                        pathStage++;
+                        startTime = System.currentTimeMillis();
+                    }
                 }
-                telemetry.addData("Status", "Starting to shoot");
                 break;
 
-            case 19: //spin to first spot
-                if (!follower.isBusy()) {
-                    spindexer.setTargetPosition(980);
+
+
+            case 22: // second-half: find first correct ball
+                elapsedTime = System.currentTimeMillis() - startTime;
+
+                wantGreen = status21;
+                wantPurple = (status22 || status23);
+
+                if (sortStep == 0) spindexer.setTargetPosition(0);
+                else if (sortStep == 1) spindexer.setTargetPosition(185);
+                else if (sortStep == 2) spindexer.setTargetPosition(360);
+
+                // Only check color once spindexer finished moving
+                if (!spindexer.isBusy()) {
+                    if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
+                        slotAlreadyChecked = sortStep;
+                        sortStep = 0;
+                        pathStage++;
+                        startTime = System.currentTimeMillis();
+                        break;
+                    }
                 }
-                if (elapsedTime>=1600)
+
+                if (elapsedTime > 500) {
+                    startTime = System.currentTimeMillis();
+                    sortStep++;
+
+                    if (sortStep > 2) {
+                        sortStep = 0;
+                        slotAlreadyChecked = -1;
+                        pathStage++;
+                    }
+                }
+                break;
+            case 23:
+                turnTurret.setTargetPosition(0);
+                if (elapsedTime>=300)
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 20: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
+            case 24: // pop up shoot
+                popUp.setPosition(0.48);
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 21: //pop up down
+
+
+            case 25: // pop down + spin shooter
                 popUp.setPosition(0);
-                turret.setVelocity(1380); //ball 2
-                if (elapsedTime >= 700) {
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 22: //spindex to next spot
-                if (!follower.isBusy()) {
-
-                    spindexer.setTargetPosition(1150);
-                }
-                if (elapsedTime>=600)
+            case 26: // move from jiggle to shoot2
+                follower.followPath(postJiggle);
+                turret.setVelocity(1385);
+                if (elapsedTime>= 400)
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 23: //pop up shoot
-                popUp.setPosition(0.51);
-                if (elapsedTime >= 700) {
+
+
+            case 27: // second slot of second-half sort
+                elapsedTime = System.currentTimeMillis() - startTime;
+
+                wantGreen = status22;
+                wantPurple = (status21 || status23);
+
+                if (sortStep == 0 && slotAlreadyChecked != 0) spindexer.setTargetPosition(0);
+                else if (sortStep == 1 && slotAlreadyChecked != 1) spindexer.setTargetPosition(185);
+                else if (sortStep == 2 && slotAlreadyChecked != 2) spindexer.setTargetPosition(360);
+
+                if (!spindexer.isBusy()) {
+                    if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
+                        secondSlotChecked = sortStep;
+                        sortStep = 0;
+                        pathStage++;
+                        startTime = System.currentTimeMillis();
+                        break;
+                    }
+                }
+
+                if (elapsedTime > 500) {
+                    startTime = System.currentTimeMillis();
+                    sortStep++;
+
+                    if (sortStep > 2) {
+                        sortStep = 0;
+                        pathStage++;
+                    }
+                }
+                break;
+
+
+            case 28: //pop up shoot
+                popUp.setPosition(0.48);
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 24: //pop up down
+            case 29: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1400); //ball 3
-                if (elapsedTime >= 700) {
+                turret.setVelocity(1370); //ball 3
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
 
-            case 25: //spindex to next spot
+            case 30: //spindex to next spot
                 if (!follower.isBusy()) {
-
-                    spindexer.setTargetPosition(1330);
+                    if (slotAlreadyChecked != 0 && secondSlotChecked != 0)
+                    {
+                        spindexer.setTargetPosition(0);
+                    }
+                    else if (slotAlreadyChecked != 1 && secondSlotChecked != 1)
+                    {
+                        spindexer.setTargetPosition(185);
+                    }
+                    else
+                    {
+                        spindexer.setTargetPosition(360);
+                    }
                 }
-                if (elapsedTime>=600)
+                if (elapsedTime>=400)
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
+                    slotAlreadyChecked = 0;
+                    secondSlotChecked = 0;
+                    sortStep = 0;
                 }
                 break;
 
-            case 26: //pop up shoot
-                popUp.setPosition(0.51);
+            case 31: //pop up shoot
+                popUp.setPosition(0.47);
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 27: //pop up down
+            case 32: //pop up down
                 popUp.setPosition(0);
                 if (elapsedTime >= 700) {
                     pathStage++;
@@ -538,7 +790,7 @@ public class icebergCleanse extends OpMode {
                 }
                 break;
 
-            case 28:
+            case 33:
                 if (!follower.isBusy()) {
                     turret.setVelocity(0);
                     //  follower.followPath(shootPre1);
@@ -548,7 +800,7 @@ public class icebergCleanse extends OpMode {
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 29:
+            case 34:
                 follower.followPath(park);
                 pathStage++;
                 startTime = System.currentTimeMillis();
@@ -556,11 +808,10 @@ public class icebergCleanse extends OpMode {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }*/
-
                 telemetry.addData("Status", "move move");
                 break;
 
-            case 30: //pop up down
+            case 35: //pop up down
                 popUp.setPosition(0);
                 if (elapsedTime >= 700) {
                     pathStage++;
@@ -569,7 +820,7 @@ public class icebergCleanse extends OpMode {
                 break;
 
 
-            case 31: // All paths complete
+            case 36: // All paths complete
                 // Robot is stopped, do nothing
                 terminateOpModeNow();
                 return;
@@ -731,8 +982,8 @@ public class icebergCleanse extends OpMode {
     }
     private boolean greenDetect()
     {
-        NormalizedRGBA colors = colorBack.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>0.0013) {
+        NormalizedRGBA colors = color0.getNormalizedColors();
+        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.003) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -746,9 +997,9 @@ public class icebergCleanse extends OpMode {
     }
     private boolean purpleDetect()
     {
-        NormalizedRGBA colors = colorBack.getNormalizedColors();
+        NormalizedRGBA colors = color0.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.0013)
+        if ((colors.blue)> colors.green && colors.blue>0.002)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);

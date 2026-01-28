@@ -693,7 +693,7 @@ public class icyTele extends LinearOpMode {
             {
                 isSpotTaken();
             }
-            if (gamepad2.left_bumper)
+            if (gamepad2.a)
             {
                 spindexer.setPower(-0.2);
                 popUp.setPosition(0);
@@ -702,14 +702,12 @@ public class icyTele extends LinearOpMode {
             {
                 purpleDetect();
             }
-            if (gamepad2.a){
-                greenDetect();
-            }
-            if (gamepad2.dpad_left)
+
+            if (gamepad2.left_bumper)
             {
                 turnTurret.setPower(-0.18);
             }
-            else if (gamepad2.dpad_right)
+            else if (gamepad2.right_bumper)
             {
                 turnTurret.setPower(0.18);
             }
