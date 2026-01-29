@@ -191,7 +191,7 @@ public class lavaTele extends LinearOpMode {
                             turret.setVelocity(1500);
                         }
                         else {
-                            turret.setVelocity(0);
+                            turret.setVelocity(800);
                         }
                     }
 
@@ -202,7 +202,7 @@ public class lavaTele extends LinearOpMode {
 
             //Shoot macro
             if (gamepad1.right_bumper) {
-                spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 telemetry.addData("Shoot Order:", "General Shoot");
                 switch (shootStep) {
@@ -262,7 +262,7 @@ public class lavaTele extends LinearOpMode {
 
             else if (gamepad1.dpad_left) //Just green
             {
-                spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 telemetry.addData("Shoot Order:", "Green");
                 switch (shootStep)
@@ -316,7 +316,7 @@ public class lavaTele extends LinearOpMode {
             }
             else if (gamepad1.dpad_right) //just purple
             {
-                spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 telemetry.addData("Shoot Order:", "Purple");
                 switch (shootStep)
@@ -391,14 +391,6 @@ public class lavaTele extends LinearOpMode {
                 turret.setPower(0);
             }
 
-            if (gamepad1.dpad_up)
-            {
-                hack();
-
-
-                //    spindexer.setTargetPosition(spindexer.getCurrentPosition()+20);
-
-            }
 
 
 
@@ -701,28 +693,32 @@ public class lavaTele extends LinearOpMode {
             {
                 isSpotTaken();
             }
-            if (gamepad2.a || gamepad1.dpad_up)
-            {
+            if ((gamepad2.a || gamepad1.dpad_up) && !popSequenceActive) {
+                popSequenceActive = true;
+                popSequenceStep = 0;
+                popStartTime = System.currentTimeMillis();
+            }
+            if (popSequenceActive) {
                 long elapsedTime = System.currentTimeMillis() - popStartTime;
-                switch (popSequenceStep)
-                {
+
+                switch (popSequenceStep) {
                     case 0:
-                        popUp.setPosition(0.45);
                         spindexer.setPower(-0.2);
                         telemetry.addLine("Case 0");
-                        telemetry.update();
-                        if (elapsedTime >= 700) {
+                        if (elapsedTime >= 200) {
                             popSequenceStep++;
                             popStartTime = System.currentTimeMillis();
                         }
                         break;
+
                     case 1:
+                        spindexer.setPower(0);
+                        popUp.setPosition(0.45);
                         telemetry.addLine("Case 1");
-                        telemetry.update();
-                       if (elapsedTime >= 200) {
+                        if (elapsedTime >= 600) {
                             popSequenceStep++;
                             popStartTime = System.currentTimeMillis();
-                            }
+                        }
                         break;
 
                     case 2:
@@ -733,12 +729,10 @@ public class lavaTele extends LinearOpMode {
                             popStartTime = System.currentTimeMillis();
                         }
                         break;
+
                     case 3:
                         telemetry.addLine("Case 3");
-                        telemetry.update();
-                        popSequenceComplete = true;
                         popSequenceActive = false;
-                        popStartTime = 0;
                         popSequenceStep = 0;
                         break;
                 }

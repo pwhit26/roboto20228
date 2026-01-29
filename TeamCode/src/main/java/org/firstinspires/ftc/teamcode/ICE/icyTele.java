@@ -190,7 +190,7 @@ public class icyTele extends LinearOpMode {
                             turret.setVelocity(1500);
                         }
                         else {
-                            turret.setVelocity(0);
+                            turret.setVelocity(800);
                         }
                     }
 
@@ -693,25 +693,29 @@ public class icyTele extends LinearOpMode {
             {
                 isSpotTaken();
             }
-            if (gamepad2.a || gamepad1.dpad_up)
-            {
+            if ((gamepad2.a || gamepad1.dpad_up) && !popSequenceActive) {
+                popSequenceActive = true;
+                popSequenceStep = 0;
+                popStartTime = System.currentTimeMillis();
+            }
+            if (popSequenceActive) {
                 long elapsedTime = System.currentTimeMillis() - popStartTime;
-                switch (popSequenceStep)
-                {
+
+                switch (popSequenceStep) {
                     case 0:
-                        popUp.setPosition(0.45);
                         spindexer.setPower(-0.2);
                         telemetry.addLine("Case 0");
-                        telemetry.update();
-                        if (elapsedTime >= 700) {
+                        if (elapsedTime >= 200) {
                             popSequenceStep++;
                             popStartTime = System.currentTimeMillis();
                         }
                         break;
+
                     case 1:
+                        spindexer.setPower(0);
+                        popUp.setPosition(0.45);
                         telemetry.addLine("Case 1");
-                        telemetry.update();
-                        if (elapsedTime >= 200) {
+                        if (elapsedTime >= 600) {
                             popSequenceStep++;
                             popStartTime = System.currentTimeMillis();
                         }
@@ -725,12 +729,10 @@ public class icyTele extends LinearOpMode {
                             popStartTime = System.currentTimeMillis();
                         }
                         break;
+
                     case 3:
                         telemetry.addLine("Case 3");
-                        telemetry.update();
-                        popSequenceComplete = true;
                         popSequenceActive = false;
-                        popStartTime = 0;
                         popSequenceStep = 0;
                         break;
                 }
