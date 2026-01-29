@@ -115,14 +115,14 @@ public class VolcanoCleanse extends OpMode {
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
 
-        shoot = new Pose(-23, 30, Math.toRadians(-90));
-        jiggle = new Pose (-27, 32, Math.toRadians(-90));
-        shoot2 = new Pose(-25, 30, Math.toRadians(-90));
-        preScoop1 = new Pose(-28, 15, Math.toRadians(-90));
-        scoop1 = new Pose(-28,4, Math.toRadians(-90));
-        scoop2 = new Pose(-28, 1, Math.toRadians(-90));
-        scoop3 = new Pose(-28, 0, Math.toRadians(-90));
-        parky = new Pose(10, 25, Math.toRadians(-90));
+        shoot = new Pose(-30, 32, Math.toRadians(-90));
+        jiggle = new Pose (-32, 32, Math.toRadians(-90));
+        shoot2 = new Pose(-30, 32, Math.toRadians(-90));
+        preScoop1 = new Pose(-30, 15, Math.toRadians(-90));
+        scoop1 = new Pose(-30,4, Math.toRadians(-90));
+        scoop2 = new Pose(-30, 1, Math.toRadians(-90));
+        scoop3 = new Pose(-30, 0, Math.toRadians(-90));
+        parky = new Pose(0, 30, Math.toRadians(-90));
 
         // Initialize follower
         follower = Constants.createFollower(hardwareMap);
@@ -300,7 +300,7 @@ public class VolcanoCleanse extends OpMode {
                 break;
 
             case 1: //little baby first move
-                turret.setVelocity(1220); //ball 1
+                turret.setVelocity(1140); //ball 1
                 follower.followPath(startShoot);
                 if (elapsedTime >= 800) {
                     pathStage++;
@@ -502,6 +502,8 @@ public class VolcanoCleanse extends OpMode {
             case 14:
                 follower.followPath(shootPre1);
                 spindexer.setPower(0.6);
+                intake.setPower(0);
+                spindexer.setTargetPosition(525);
                 pathStage++;
                 startTime = System.currentTimeMillis();
                 /*if (elapsedTime >= 1000) {
@@ -511,11 +513,12 @@ public class VolcanoCleanse extends OpMode {
                 telemetry.addData("Status", "Starting second path");
                 break;
             case 15:
-                if (!follower.isBusy()) {
                     intake.setPower(0.4);
-                    spindexer.setTargetPosition(525);
-                    pathStage++;
-                }
+                    if (elapsedTime>=400)
+                    {
+                        pathStage++;
+                        startTime = System.currentTimeMillis();
+                    }
                 break;
             case 16:
 
@@ -529,7 +532,7 @@ public class VolcanoCleanse extends OpMode {
                 elapsedTime = System.currentTimeMillis() - startTime;
 
                 // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1450) {
+                if (elapsedTime >= 1050) {
                     intake.setPower(0);
                     spindexer.setTargetPosition(700);
                     pathStage++;
@@ -567,7 +570,7 @@ public class VolcanoCleanse extends OpMode {
 
             case 19:
                 follower.followPath(shootPre2);
-                turret.setVelocity(1340);
+                turret.setVelocity(1230);
                 //startTime = System.currentTimeMillis();
                 if (elapsedTime >= 600) {
                     pathStage++;

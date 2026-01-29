@@ -115,9 +115,9 @@ public class FireyWashUrPits extends OpMode {
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
 
-        shoot = new Pose(9, 0, Math.toRadians(-24.5));
-        jiggle = new Pose (5, 0, Math.toRadians(-23));
-        shoot2 = new Pose(9, 0, Math.toRadians(-23));
+        shoot = new Pose(9, 0, Math.toRadians(-22.5));
+        jiggle = new Pose (5, 0, Math.toRadians(-22.5));
+        shoot2 = new Pose(9, 0, Math.toRadians(-22.5));
         preScoop1 = new Pose(24.5, -10, Math.toRadians(-90));
         scoop1 = new Pose(24.5,-43, Math.toRadians(-90));
         scoop2 = new Pose(24.5, -45, Math.toRadians(-90));
@@ -729,8 +729,8 @@ public class FireyWashUrPits extends OpMode {
 
 
             case 28: //pop up shoot
-                popUp.setPosition(0.48);
-                if (elapsedTime >= 800) {
+                popUp.setPosition(0.49);
+                if (elapsedTime >= 950) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }

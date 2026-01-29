@@ -750,7 +750,14 @@ public class lavaTele extends LinearOpMode {
                 turnTurret.setPower(0.18);
             }
             else {
-
+                turnTurret.setPower(0);
+            }
+            if (gamepad2.b)
+            {
+                spindexer.setPower(-0.2);
+            }
+            else {
+                spindexer.setPower(0);
             }
 
 

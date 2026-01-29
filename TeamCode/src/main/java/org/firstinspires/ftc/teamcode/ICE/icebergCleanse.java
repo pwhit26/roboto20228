@@ -90,9 +90,9 @@ public class icebergCleanse extends OpMode {
         popUp = hardwareMap.get(Servo.class, "popup");
         popUp.setPosition(0);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.08);
+        angleTurret0.setPosition(0.01);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.92);
+        angleTurret1.setPosition(0.99);
 
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -115,13 +115,13 @@ public class icebergCleanse extends OpMode {
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
 
-        shoot = new Pose(-23, -30, Math.toRadians(90));
-        jiggle = new Pose (-27, -32, Math.toRadians(90));
-        shoot2 = new Pose(-25, -30, Math.toRadians(90));
-        preScoop1 = new Pose(-28, -15, Math.toRadians(90));
-        scoop1 = new Pose(-28,-4, Math.toRadians(90));
-        scoop2 = new Pose(-28, -1, Math.toRadians(90));
-        scoop3 = new Pose(-28, 0, Math.toRadians(90));
+        shoot = new Pose(-27, -30, Math.toRadians(90));
+        jiggle = new Pose (-29, -32, Math.toRadians(90));
+        shoot2 = new Pose(-27, -30, Math.toRadians(90));
+        preScoop1 = new Pose(-28, -18, Math.toRadians(90));
+        scoop1 = new Pose(-29,-5, Math.toRadians(90));
+        scoop2 = new Pose(-29, -2, Math.toRadians(90));
+        scoop3 = new Pose(-29, 0, Math.toRadians(90));
         parky = new Pose(10, -25, Math.toRadians(90));
 
 
@@ -315,7 +315,7 @@ public class icebergCleanse extends OpMode {
                 break;
 
             case 1: //little baby first move
-                turret.setVelocity(1220); //ball 1
+                turret.setVelocity(1195); //ball 1
                 follower.followPath(startShoot);
                 if (elapsedTime >= 800) {
                     pathStage++;
@@ -328,8 +328,8 @@ public class icebergCleanse extends OpMode {
 
                 if (!follower.isBusy()) {
 
-                    angleTurret0.setPosition(0.005);
-                    angleTurret1.setPosition(0.995);
+                    angleTurret0.setPosition(0.01);
+                    angleTurret1.setPosition(0.99);
                 }
                 if (elapsedTime >= 600) {
                     pathStage++;
@@ -517,6 +517,8 @@ public class icebergCleanse extends OpMode {
             case 14:
                 follower.followPath(shootPre1);
                 spindexer.setPower(0.6);
+                intake.setPower(0);
+                spindexer.setTargetPosition(525);
                 pathStage++;
                 startTime = System.currentTimeMillis();
                 /*if (elapsedTime >= 1000) {
@@ -526,10 +528,11 @@ public class icebergCleanse extends OpMode {
                 telemetry.addData("Status", "Starting second path");
                 break;
             case 15:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.4);
-                    spindexer.setTargetPosition(525);
+                intake.setPower(0.4);
+                if (elapsedTime>=400)
+                {
                     pathStage++;
+                    startTime = System.currentTimeMillis();
                 }
                 break;
             case 16:
@@ -544,7 +547,7 @@ public class icebergCleanse extends OpMode {
                 elapsedTime = System.currentTimeMillis() - startTime;
 
                 // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1450) {
+                if (elapsedTime >= 1050) {
                     intake.setPower(0);
                     spindexer.setTargetPosition(700);
                     pathStage++;
@@ -582,7 +585,9 @@ public class icebergCleanse extends OpMode {
 
             case 19:
                 follower.followPath(shootPre2);
-                turret.setVelocity(1340);
+                angleTurret0.setPosition(0.01);
+                angleTurret1.setPosition(0.99);
+                turret.setVelocity(1215);
                 //startTime = System.currentTimeMillis();
                 if (elapsedTime >= 600) {
                     pathStage++;
@@ -689,7 +694,7 @@ public class icebergCleanse extends OpMode {
 
             case 26: // move from jiggle to shoot2
                 follower.followPath(postJiggle);
-                turret.setVelocity(1385);
+                turret.setVelocity(1410);
                 if (elapsedTime>= 400)
                 {
                     pathStage++;
@@ -732,8 +737,8 @@ public class icebergCleanse extends OpMode {
 
 
             case 28: //pop up shoot
-                popUp.setPosition(0.48);
-                if (elapsedTime >= 800) {
+                popUp.setPosition(0.49);
+                if (elapsedTime >= 950) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }

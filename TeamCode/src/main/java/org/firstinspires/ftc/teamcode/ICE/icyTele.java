@@ -753,6 +753,13 @@ public class icyTele extends LinearOpMode {
             else {
 
             }
+            if (gamepad2.b)
+            {
+                spindexer.setPower(-0.2);
+            }
+            else {
+                spindexer.setPower(0);
+            }
 
             telemetry.update();
 

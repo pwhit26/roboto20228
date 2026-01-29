@@ -116,7 +116,7 @@ public class PenguinoCleanseAuto extends OpMode {
         start = new Pose(0, 0, Math.toRadians(0));
 
         shoot = new Pose(9, 0, Math.toRadians(24.5));
-        jiggle = new Pose (5, 0, Math.toRadians(22.5));
+        jiggle = new Pose (5, 0, Math.toRadians(24.5));
         shoot2 = new Pose(9, 0, Math.toRadians(24.5));
         preScoop1 = new Pose(24.5, 10, Math.toRadians(90));
         scoop1 = new Pose(24.5,43, Math.toRadians(90));
@@ -452,7 +452,7 @@ public class PenguinoCleanseAuto extends OpMode {
 
             case 9: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1640); //ball 3
+                turret.setVelocity(1650); //ball 3
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -514,6 +514,8 @@ public class PenguinoCleanseAuto extends OpMode {
             case 14:
                 follower.followPath(shootPre1);
                 spindexer.setPower(0.6);
+                spindexer.setTargetPosition(525);
+                intake.setPower(0.4);
                 pathStage++;
                 startTime = System.currentTimeMillis();
                 /*if (elapsedTime >= 1000) {
@@ -531,8 +533,6 @@ public class PenguinoCleanseAuto extends OpMode {
 
                 // Start the path ONCE
                 if (!preScoStarted) {
-                    intake.setPower(0.4);
-                    spindexer.setTargetPosition(525);
                     follower.followPath(preSco1);
                     startTime = System.currentTimeMillis();
                     preScoStarted = true;
@@ -579,7 +579,7 @@ public class PenguinoCleanseAuto extends OpMode {
 
             case 19:
                 follower.followPath(shootPre2);
-                turret.setVelocity(1540);
+                turret.setVelocity(1560);
                 //startTime = System.currentTimeMillis();
                 if (elapsedTime >= 600) {
                     pathStage++;
@@ -588,9 +588,12 @@ public class PenguinoCleanseAuto extends OpMode {
                 telemetry.addData("Status", "Starting second path");
                 break;
             case 20:
-                spindexer.setTargetPosition(990);
-                pathStage++;
-                startTime = System.currentTimeMillis();
+                if (!follower.isBusy())
+                {
+                    spindexer.setTargetPosition(990);
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
                 break;
 
             case 21:
@@ -658,7 +661,7 @@ public class PenguinoCleanseAuto extends OpMode {
                 }
                 break;
             case 23:
-                turnTurret.setTargetPosition(0);
+                turnTurret.setTargetPosition(-5);
                 if (elapsedTime>=300)
                 {
                     pathStage++;
@@ -679,6 +682,7 @@ public class PenguinoCleanseAuto extends OpMode {
             case 25: // pop down + spin shooter
                 popUp.setPosition(0);
                 if (elapsedTime >= 800) {
+                    turnTurret.setTargetPosition(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
