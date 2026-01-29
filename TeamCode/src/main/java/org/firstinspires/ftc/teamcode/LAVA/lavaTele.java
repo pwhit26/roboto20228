@@ -40,6 +40,7 @@ public class lavaTele extends LinearOpMode {
     boolean popSequenceActive = false;
     boolean popSequenceComplete = true;
     long sequenceStartTime = 0;
+    long popStartTime = 0;
     int popSequenceStep = 0;
     int shootStep=0;
     boolean shootSequenceActive = false;
@@ -694,8 +695,45 @@ public class lavaTele extends LinearOpMode {
             }
             if (gamepad2.a)
             {
-                spindexer.setPower(-0.2);
-                popUp.setPosition(0);
+                long elapsedTime = System.currentTimeMillis() - popStartTime;
+                switch (popSequenceStep)
+                {
+                    case 0:
+                        popUp.setPosition(0.2);
+                        telemetry.addLine("Case 0");
+                        telemetry.update();
+                        if (elapsedTime >= 150) {
+                            popSequenceStep++;
+                            popStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 1:
+                        spindexer.setPower(-0.2);
+                        telemetry.addLine("Case 1");
+                        telemetry.update();
+                       if (elapsedTime >= 200) {
+                            popSequenceStep++;
+                            popStartTime = System.currentTimeMillis();
+                            }
+                        break;
+
+                    case 2:
+                        popUp.setPosition(0);
+                        telemetry.addLine("Case 2");
+                        if (elapsedTime >= 200) {
+                            popSequenceStep++;
+                            popStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                    case 3:
+                        telemetry.addLine("Case 3");
+                        telemetry.update();
+                        popSequenceComplete = true;
+                        popSequenceActive = false;
+                        popStartTime = 0;
+                        popSequenceStep = 0;
+                        break;
+                }
             }
             if (gamepad2.b)
             {
@@ -860,7 +898,7 @@ public class lavaTele extends LinearOpMode {
         }
         if (dist>3)
         {
-            velocity = velocity - 40;
+            velocity = velocity - 20;
         }
 
 
