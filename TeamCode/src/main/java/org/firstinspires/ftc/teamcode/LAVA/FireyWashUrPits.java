@@ -452,7 +452,7 @@ public class FireyWashUrPits extends OpMode {
 
             case 9: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1620); //ball 3
+                turret.setVelocity(1635); //ball 3
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();

@@ -91,6 +91,7 @@ public class lavaTele extends LinearOpMode {
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
         spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
         //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
@@ -141,16 +142,23 @@ public class lavaTele extends LinearOpMode {
             {
                 LLResult ll = limelight.getLatestResult();
                 telemetry.addData("Limelight", "Got result: %s", ll != null ? "Valid" : "Null");
+                LLResultTypes.FiducialResult targetTag = null;
+
 
                 if (ll != null) {
                     List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
 
                     for (LLResultTypes.FiducialResult fr : fiducials) {
-                        long tagId = fr.getFiducialId(); // This is your AprilTag ID
-                        Id = tagId;
-                        telemetry.addData("Detected Tag ID", tagId);
+                        long tagId = fr.getFiducialId();
+                        telemetry.addData("Detected Tag", tagId);
+
+                        if (tagId == 24) {
+                            Id = tagId;
+                            targetTag = fr;
+                            break; // stop once we found red goal
+                        }
                     }
-                    if (Id == 24)
+                    if (targetTag != null && Id == 24)
                     {
                         boolean isValid = ll.isValid();
                         double tx = ll.getTx();
@@ -169,7 +177,7 @@ public class lavaTele extends LinearOpMode {
                         }
                         else
                         {
-                            turret.setVelocity(0);
+                            turret.setVelocity(800);
                         }
 
                         telemetry.addData("LL Valid", isValid);
@@ -385,7 +393,7 @@ public class lavaTele extends LinearOpMode {
 
             if (gamepad1.dpad_up)
             {
-                setInitialPos();
+                hack();
 
 
                 //    spindexer.setTargetPosition(spindexer.getCurrentPosition()+20);
@@ -693,22 +701,22 @@ public class lavaTele extends LinearOpMode {
             {
                 isSpotTaken();
             }
-            if (gamepad2.a)
+            if (gamepad2.a || gamepad1.dpad_up)
             {
                 long elapsedTime = System.currentTimeMillis() - popStartTime;
                 switch (popSequenceStep)
                 {
                     case 0:
-                        popUp.setPosition(0.2);
+                        popUp.setPosition(0.45);
+                        spindexer.setPower(-0.2);
                         telemetry.addLine("Case 0");
                         telemetry.update();
-                        if (elapsedTime >= 150) {
+                        if (elapsedTime >= 700) {
                             popSequenceStep++;
                             popStartTime = System.currentTimeMillis();
                         }
                         break;
                     case 1:
-                        spindexer.setPower(-0.2);
                         telemetry.addLine("Case 1");
                         telemetry.update();
                        if (elapsedTime >= 200) {
@@ -799,35 +807,37 @@ public class lavaTele extends LinearOpMode {
     }
     private void angleAdjust(double tx, double dist)
     {
-        if (dist >2.2 && dist <2.9)
+        if (Id == 24)
         {
-            if (tx>3)
+            if (dist >2.2 && dist <2.9)
             {
-                turnTurret.setPower(0.173);
-            }
-            else if (tx<-3)
-            {
-                turnTurret.setPower(-0.173);
+                if (tx>3)
+                {
+                    turnTurret.setPower(0.173);
+                }
+                else if (tx<-3)
+                {
+                    turnTurret.setPower(-0.173);
+                }
+                else {
+                    turnTurret.setPower(0);
+                }
             }
             else {
-                turnTurret.setPower(0);
+                if (tx>2)
+                {
+                    turnTurret.setPower(0.173);
+                }
+                else if (tx<-4)
+                {
+                    turnTurret.setPower(-0.173);
+                }
+                else
+                {
+                    turnTurret.setPower(0);
+                }
             }
         }
-        else {
-            if (tx>2)
-            {
-                turnTurret.setPower(0.173);
-            }
-            else if (tx<-4)
-            {
-                turnTurret.setPower(-0.173);
-            }
-            else
-            {
-                turnTurret.setPower(0);
-            }
-        }
-
     }
 
 
@@ -892,7 +902,11 @@ public class lavaTele extends LinearOpMode {
         {
             velocity = velocity -50;
         }
-        if (dist >=2.2 && dist<2.9)
+        if (dist >=2.2 && dist<2.5)
+        {
+            velocity = velocity - 75;
+        }
+        if (dist >=2.5 && dist<2.9)
         {
             velocity = velocity + 5;
         }
@@ -931,7 +945,7 @@ public class lavaTele extends LinearOpMode {
     private boolean greenDetect()
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.005) {
+        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0028) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -1025,6 +1039,19 @@ public class lavaTele extends LinearOpMode {
         if (intakeTimingDetection())
         {
             spindexer.setPower(0);
+        }
+    }
+    private void hack()
+    {
+        if (!greenDetect() && !purpleDetect() && popUp.getPosition() != 0.45)
+        {
+            spindexer.setPower(-0.15);
+            popUp.setPosition(0.45);
+
+        }
+        else {
+            spindexer.setPower(0);
+            popUp.setPosition(0);
         }
     }
 }
