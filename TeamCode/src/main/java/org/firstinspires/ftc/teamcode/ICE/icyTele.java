@@ -758,7 +758,6 @@ public class icyTele extends LinearOpMode {
                 spindexer.setPower(-0.2);
             }
             else {
-                spindexer.setPower(0);
             }
 
             telemetry.update();

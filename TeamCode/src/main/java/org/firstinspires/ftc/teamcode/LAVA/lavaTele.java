@@ -671,7 +671,7 @@ public class lavaTele extends LinearOpMode {
             {
                 intake.setPower(0.6);
             }
-            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a && !gamepad1.left_bumper){
+            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a && !gamepad1.left_bumper && !gamepad1.dpad_up){
                 intake.setPower(0);
                 spindexer.setPower(0);
             }
@@ -757,7 +757,6 @@ public class lavaTele extends LinearOpMode {
                 spindexer.setPower(-0.2);
             }
             else {
-                spindexer.setPower(0);
             }
 
 
