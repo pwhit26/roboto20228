@@ -751,6 +751,7 @@ public class icyTele extends LinearOpMode {
                 turnTurret.setPower(0.18);
             }
             else {
+                //hi
 
             }
             if (gamepad2.b)

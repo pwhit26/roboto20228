@@ -1052,6 +1052,6 @@ public class lavaTele extends LinearOpMode {
         else {
             spindexer.setPower(0);
             popUp.setPosition(0);
-        }
+        }//hi
     }
 }
