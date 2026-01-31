@@ -115,14 +115,14 @@ public class icebergCleanse extends OpMode {
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
 
-        shoot = new Pose(-27, -30, Math.toRadians(90));
-        jiggle = new Pose (-29, -32, Math.toRadians(90));
-        shoot2 = new Pose(-27, -30, Math.toRadians(90));
+        shoot = new Pose(-27, -33, Math.toRadians(90));
+        jiggle = new Pose (-30, -32, Math.toRadians(90));
+        shoot2 = new Pose(-28, -30, Math.toRadians(90));
         preScoop1 = new Pose(-28, -18, Math.toRadians(90));
-        scoop1 = new Pose(-29,-5, Math.toRadians(90));
-        scoop2 = new Pose(-29, -2, Math.toRadians(90));
-        scoop3 = new Pose(-29, 0, Math.toRadians(90));
-        parky = new Pose(10, -25, Math.toRadians(90));
+        scoop1 = new Pose(-28,-7, Math.toRadians(90));
+        scoop2 = new Pose(-28, -4, Math.toRadians(90));
+        scoop3 = new Pose(-28, -1, Math.toRadians(90));
+        parky = new Pose(17, -32, Math.toRadians(90));
 
 
 
@@ -281,17 +281,17 @@ public class icebergCleanse extends OpMode {
                 telemetry.addData("Current Id", Id);
                 IdGame = Id; //this may not work but doing this to set a variable for each game to reference as the motif Id in case it gets messed up
 
-                if (Id == 21) {
+                if (IdGame == 21) {
                     telemetry.addData("Motif", "Green Purple Purple");
                     status21 = true;
                     status22 = false;
                     status23 = false;
-                } else if (Id == 22) {
+                } else if (IdGame == 22) {
                     telemetry.addData("Motif", "Purple Green Purple");
                     status21 = false;
                     status22 = true;
                     status23 = false;
-                } else if (Id == 23) {
+                } else if (IdGame == 23) {
                     telemetry.addData("Motif", "Purple Purple Green");
                     status21 = false;
                     status22 = false;
@@ -307,15 +307,17 @@ public class icebergCleanse extends OpMode {
 
 
 
+
                 // turned this time up to see the telemetry
                 if (elapsedTime >= 500) {
+                    IdGame = Id;   // LOCK IT
                     pathStage++;
-                    startTime = System.currentTimeMillis(); // reset timer for next stage
+                    startTime = System.currentTimeMillis();
                 }
                 break;
 
             case 1: //little baby first move
-                turret.setVelocity(1195); //ball 1
+                turret.setVelocity(1185); //ball 1
                 follower.followPath(startShoot);
                 if (elapsedTime >= 800) {
                     pathStage++;
@@ -455,7 +457,7 @@ public class icebergCleanse extends OpMode {
 
             case 9: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1410); //ball 3
+                turret.setVelocity(1360); //ball 3
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -576,7 +578,7 @@ public class icebergCleanse extends OpMode {
                 }
                 if (elapsedTime>=1850)
                 {
-                    turret.setVelocity(1360);
+                    turret.setVelocity(1340);
                     intake.setPower(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -587,7 +589,7 @@ public class icebergCleanse extends OpMode {
                 follower.followPath(shootPre2);
                 angleTurret0.setPosition(0.01);
                 angleTurret1.setPosition(0.99);
-                turret.setVelocity(1215);
+                turret.setVelocity(1200);
                 //startTime = System.currentTimeMillis();
                 if (elapsedTime >= 600) {
                     pathStage++;
@@ -607,23 +609,25 @@ public class icebergCleanse extends OpMode {
                     angleTurret1.setPosition(0.985);
                 }
 
-                if (elapsedTime >= 900) {
+                if (elapsedTime >= 500) {
                     // --- Begin physical re-home of spindexer ---
                     spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
                     spindexer.setPower(0.15);
 
+
                     // spin slowly until a ball is seen → this is real slot zero
                     if (greenDetect() || purpleDetect()) {
                         spindexer.setPower(0);
+                        sortStep = 0;
+                        slotAlreadyChecked = -1;
+                        secondSlotChecked = -1;
 
                         spindexer.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
                         spindexer.setTargetPosition(0);
                         spindexer.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                         spindexer.setPower(0.43);
 
-                        sortStep = 0;
-                        slotAlreadyChecked = -1;
-                        secondSlotChecked = -1;
+
 
                         pathStage++;
                         startTime = System.currentTimeMillis();
@@ -694,7 +698,7 @@ public class icebergCleanse extends OpMode {
 
             case 26: // move from jiggle to shoot2
                 follower.followPath(postJiggle);
-                turret.setVelocity(1410);
+                turret.setVelocity(1400);
                 if (elapsedTime>= 400)
                 {
                     pathStage++;
@@ -826,6 +830,9 @@ public class icebergCleanse extends OpMode {
 
 
             case 36: // All paths complete
+                sortStep = 0;
+                slotAlreadyChecked = -1;
+                secondSlotChecked = -1;
                 // Robot is stopped, do nothing
                 terminateOpModeNow();
                 return;

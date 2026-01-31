@@ -51,6 +51,14 @@ public class icyTele extends LinearOpMode {
     private double v;
     private int initialPos=0;
     long Id;
+    boolean unstuckActive = false;
+    long unstuckStartTime = 0;
+    int colorConfirmCount = 0;
+    static final int COLOR_CONFIRM_THRESHOLD = 3;
+    boolean shootingActive = false;
+    long shootStepStartTime = 0;
+    boolean ballLatched = false;
+    boolean readyForPopup = false;
 
 
     Servo angleTurret0, angleTurret1, popUp;
@@ -201,68 +209,107 @@ public class icyTele extends LinearOpMode {
 
 
             //Shoot macro
-            if (gamepad1.right_bumper) {
-                spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
-                telemetry.addData("Shoot Order:", "General Shoot");
+            // ================= SHOOTING SEQUENCE =================
+
+// Start shooting sequence
+            if (gamepad1.right_bumper && !shootingActive) {
+                shootingActive = true;
+                shootStep = 0;
+                shootStepStartTime = System.currentTimeMillis();
+                colorConfirmCount = 0;
+                ballLatched = false;
+                readyForPopup = false;
+            }
+
+// Default safety
+            if (!shootingActive && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.x && !gamepad1.y && !gamepad2.a && !gamepad2.b) {
+                spindexer.setPower(0);
+            }
+            // HARD CANCEL: release button aborts shooting
+            if (!gamepad1.right_bumper && shootingActive && shootStep == 0) {
+                shootingActive = false;
+                shootStep = 0;
+                spindexer.setPower(0);
+                popUp.setPosition(0);
+            }
+
+// Run sequence
+            if (shootingActive) {
+                long elapsed = System.currentTimeMillis() - shootStepStartTime;
+
                 switch (shootStep) {
+
+                    // ------------------------------------------------
+                    // STEP 0: Spin spindexer fast toward shooter
+                    // ------------------------------------------------
                     case 0:
-                        //turret.setPower(0.6);
-                        if (elapsedTime >= 300) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
+                        spindexer.setPower(0.25);  // FAST FEED
+
+                        if (greenDetect() || purpleDetect()) {
+                            colorConfirmCount++;
+                        } else {
+                            colorConfirmCount = 0;
                         }
-                        break;
-                    case 1:
-                        boolean isColorDetected = isTargetColorDetected();
-                        if (isColorDetected && !wasColorDetected) {
-                            // Color just detected, stop the spindexer
-                            spindexer.setPower(0);
-                            wasColorDetected = true;
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        } else if (!isColorDetected) {
-                            // No color detected, keep spinning
-                            spindexer.setPower(0.25); // Adjust power as needed
-                            wasColorDetected = false;
+
+                        // Once color is confirmed, slow down
+                        if (colorConfirmCount >= COLOR_CONFIRM_THRESHOLD) {
+                            shootStep = 1;
+                            shootStepStartTime = System.currentTimeMillis();
                         }
-                        else if (elapsedTime >= 5000) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 2:
-                        if (elapsedTime>=200)
-                        {
-                            popUp.setPosition(0.45); //ALL THE WAY UP
-                            ballcount--;
-                        }
-                        if (elapsedTime >= 450) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 3:
-                        popUp.setPosition(0);
-                        //turret.setPower(0);
-                        if (elapsedTime >= 500) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 4:
-                        shootSequenceComplete = true;
-                        shootSequenceActive = false;
-                        sequenceStartTime = 0;
-                        shootStep = 0;
                         break;
 
+                    // ------------------------------------------------
+                    // STEP 1: Slow crawl + latch detection
+                    // ------------------------------------------------
+                    case 1:
+                        spindexer.setPower(0.05); // CRAWL SPEED
+
+                        if (!ballLatched) {
+                            ballLatched = true;
+                            shootStepStartTime = System.currentTimeMillis();
+                        }
+
+                        // Micro-advance to center ball
+                        if (elapsed >= 20) {
+                            spindexer.setPower(0);
+                            shootStep = 2;
+                            shootStepStartTime = System.currentTimeMillis();
+                        }
+                        break;
+
+                    // ------------------------------------------------
+                    // STEP 2: Popup up (spindexer fully stopped)
+                    // ------------------------------------------------
+                    case 2:
+                        spindexer.setPower(0);
+                        popUp.setPosition(0.45); // POPUP UP
+
+                        if (elapsed >= 450) {
+                            shootStep = 3;
+                            shootStepStartTime = System.currentTimeMillis();
+                        }
+                        break;
+
+                    // ------------------------------------------------
+                    // STEP 3: Popup down & reset
+                    // ------------------------------------------------
+                    case 3:
+                        popUp.setPosition(0.0); // POPUP DOWN
+
+                        if (elapsed >= 200) {
+                            shootingActive = false;
+                            shootStep = 0;
+                            colorConfirmCount = 0;
+                            ballLatched = false;
+                        }
+                        break;
                 }
             }
 
+
             else if (gamepad1.dpad_left) //Just green
             {
-                spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 telemetry.addData("Shoot Order:", "Green");
                 switch (shootStep)
@@ -316,7 +363,7 @@ public class icyTele extends LinearOpMode {
             }
             else if (gamepad1.dpad_right) //just purple
             {
-                spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
                 long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
                 telemetry.addData("Shoot Order:", "Purple");
                 switch (shootStep)
@@ -343,7 +390,7 @@ public class icyTele extends LinearOpMode {
                     case 1:
                         if (elapsedTime>=200)
                         {
-                            popUp.setPosition(0.45); //ALL THE WAY UP
+                            popUp.setPosition(0.45); //ALL THE WAY UP 0.51
                         }
 
                         if (elapsedTime >= 450) {
@@ -368,7 +415,7 @@ public class icyTele extends LinearOpMode {
                 }
 
             }
-            else if (!gamepad1.right_bumper && !gamepad1.y && !gamepad1.dpad_left && !gamepad1.dpad_right){
+            else if (!gamepad1.right_bumper && !gamepad1.y && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad2.b && !gamepad1.x && !gamepad1.dpad_up && !gamepad2.a){
                 wasColorDetected = false;
                 // Stop spindexer when bumper is released
                 spindexer.setPower(0);
@@ -671,7 +718,7 @@ public class icyTele extends LinearOpMode {
             {
                 intake.setPower(0.6);
             }
-            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a && !gamepad1.left_bumper){
+            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a && !gamepad1.left_bumper && !gamepad1.x && !gamepad1.dpad_up){
                 intake.setPower(0);
                 spindexer.setPower(0);
             }
@@ -910,7 +957,7 @@ public class icyTele extends LinearOpMode {
         }
         if (dist>3)
         {
-            velocity = velocity - 20;
+            velocity = velocity - 5;
         }
 
 
@@ -942,7 +989,7 @@ public class icyTele extends LinearOpMode {
 
     private boolean greenDetect()
     {
-        NormalizedRGBA colors = color0.getNormalizedColors();
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
         if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0028) {
 
             telemetry.addData("Color seen:", "green");
@@ -957,9 +1004,9 @@ public class icyTele extends LinearOpMode {
     }
     private boolean purpleDetect()
     {
-        NormalizedRGBA colors = color0.getNormalizedColors();
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.003)
+        if ((colors.blue)> colors.green && colors.blue>0.0028)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);

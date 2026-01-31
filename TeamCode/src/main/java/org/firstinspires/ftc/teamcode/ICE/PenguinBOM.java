@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.LAVA;
+package org.firstinspires.ftc.teamcode.ICE;
 // shoot far, grab preset
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierCurve;
@@ -27,7 +27,7 @@ import java.util.List;
 //GOOD AUTO USE THIS ONE!!!!!!
 //hellooooo
 @Autonomous
-public class FireyWashUrPits extends OpMode {
+public class PenguinBOM extends OpMode {
     private Follower follower;
     private Pose start, shoot, shoot2, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain, jiggle;
     private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3, postJiggle;
@@ -115,13 +115,13 @@ public class FireyWashUrPits extends OpMode {
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(0, 0, Math.toRadians(0));
 
-        shoot = new Pose(9, 0, Math.toRadians(-22));
-        jiggle = new Pose (5, 0, Math.toRadians(-22));
-        shoot2 = new Pose(9, 0, Math.toRadians(-22));
-        preScoop1 = new Pose(24.5, -10, Math.toRadians(-90));
-        scoop1 = new Pose(24.5,-42, Math.toRadians(-90));
-        scoop2 = new Pose(24.5, -44, Math.toRadians(-90));
-        scoop3 = new Pose(24.5, -46, Math.toRadians(-90));
+        shoot = new Pose(9, 0, Math.toRadians(24.5));
+        jiggle = new Pose (5, 0, Math.toRadians(24.5));
+        shoot2 = new Pose(9, 0, Math.toRadians(24.5));
+        preScoop1 = new Pose(10, 5, Math.toRadians(90));
+        scoop1 = new Pose(10,50, Math.toRadians(180));
+        scoop2 = new Pose(5, 50, Math.toRadians(180));
+        scoop3 = new Pose(0, 50, Math.toRadians(180));
         parky = new Pose(23, 0, Math.toRadians(0));
 
 
@@ -312,7 +312,7 @@ public class FireyWashUrPits extends OpMode {
                 break;
 
             case 1: //little baby first move
-                turret.setVelocity(1500); //ball 1
+                turret.setVelocity(1530); //ball 1
                 follower.followPath(startShoot);
                 if (elapsedTime >= 800) {
                     pathStage++;
@@ -452,7 +452,7 @@ public class FireyWashUrPits extends OpMode {
 
             case 9: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1635); //ball 3
+                turret.setVelocity(1650); //ball 3
                 if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -504,6 +504,7 @@ public class FireyWashUrPits extends OpMode {
             case 13:
                 if (!follower.isBusy()) {
                     turret.setVelocity(0);
+                    intake.setPower(0.4);
                     //  follower.followPath(shootPre1);
                 }
                 if (elapsedTime >= 800) {
@@ -514,6 +515,8 @@ public class FireyWashUrPits extends OpMode {
             case 14:
                 follower.followPath(shootPre1);
                 spindexer.setPower(0.6);
+                spindexer.setTargetPosition(525);
+                intake.setPower(0.4);
                 pathStage++;
                 startTime = System.currentTimeMillis();
                 /*if (elapsedTime >= 1000) {
@@ -531,8 +534,6 @@ public class FireyWashUrPits extends OpMode {
 
                 // Start the path ONCE
                 if (!preScoStarted) {
-                    intake.setPower(0.4);
-                    spindexer.setTargetPosition(525);
                     follower.followPath(preSco1);
                     startTime = System.currentTimeMillis();
                     preScoStarted = true;
@@ -570,7 +571,7 @@ public class FireyWashUrPits extends OpMode {
                 }
                 if (elapsedTime>=1850)
                 {
-                    turret.setVelocity(1430);
+                    turret.setVelocity(1460);
                     intake.setPower(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -579,7 +580,7 @@ public class FireyWashUrPits extends OpMode {
 
             case 19:
                 follower.followPath(shootPre2);
-                turret.setVelocity(1510); //ball 4
+                turret.setVelocity(1560);
                 //startTime = System.currentTimeMillis();
                 if (elapsedTime >= 600) {
                     pathStage++;
@@ -588,9 +589,12 @@ public class FireyWashUrPits extends OpMode {
                 telemetry.addData("Status", "Starting second path");
                 break;
             case 20:
-                spindexer.setTargetPosition(990);
-                pathStage++;
-                startTime = System.currentTimeMillis();
+                if (!follower.isBusy())
+                {
+                    spindexer.setTargetPosition(990);
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
                 break;
 
             case 21:
@@ -658,8 +662,8 @@ public class FireyWashUrPits extends OpMode {
                 }
                 break;
             case 23:
-                turnTurret.setTargetPosition(0);
-                if (elapsedTime>=500)
+                turnTurret.setTargetPosition(-5);
+                if (elapsedTime>=300)
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -679,6 +683,7 @@ public class FireyWashUrPits extends OpMode {
             case 25: // pop down + spin shooter
                 popUp.setPosition(0);
                 if (elapsedTime >= 800) {
+                    turnTurret.setTargetPosition(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -686,7 +691,7 @@ public class FireyWashUrPits extends OpMode {
 
             case 26: // move from jiggle to shoot2
                 follower.followPath(postJiggle);
-                turret.setVelocity(1665); //ball 5
+                turret.setVelocity(1685);
                 if (elapsedTime>= 400)
                 {
                     pathStage++;
@@ -729,8 +734,8 @@ public class FireyWashUrPits extends OpMode {
 
 
             case 28: //pop up shoot
-                popUp.setPosition(0.49);
-                if (elapsedTime >= 950) {
+                popUp.setPosition(0.48);
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -738,7 +743,7 @@ public class FireyWashUrPits extends OpMode {
 
             case 29: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1630); //ball 6
+                turret.setVelocity(1670); //ball 3
                 if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
