@@ -935,7 +935,7 @@ public class ColorSensorTester extends LinearOpMode {
     private boolean greenDetect()
     {
         NormalizedRGBA colors = colorBack.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.003) {
+        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0018) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -951,7 +951,7 @@ public class ColorSensorTester extends LinearOpMode {
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.003 && colors.blue<0.005)
+        if ((colors.blue)> colors.green && colors.blue>0.0018)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
