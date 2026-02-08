@@ -310,14 +310,14 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         double power = (error * kP) + (derivative * kD);
                         lastError = error;
 
-                        power = Math.max(-0.5, Math.min(0.5, power));
+                        power = Math.max(-0.425, Math.min(0.425, power));
 
                         if (error > PositionToleranceDeg) {
                             spindexer.setPower(power * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Keep resetting until we are in tolerance
                         } else if (error <= PositionToleranceDeg) {
                             spindexer.setPower(0);
-                            if (stepTime >= 220) { // Increased settle time slightly
+                            if (stepTime >= 250) { // Increased settle time slightly
                                 shootStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                                 emptySlotCounter = 0; // Reset counter for the check
@@ -327,7 +327,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                     case 1: // CHECK FOR BALL
                         if (greenDetect() || purpleDetect()) {
-                            if (stepTime>=50)
+                            if (stepTime>=75)
                             {
                                 shootStep = 2;
                                 sequenceStartTime = System.currentTimeMillis();
@@ -736,7 +736,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     private boolean greenDetect()
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0011) {
+        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0013) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -752,7 +752,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.0012)
+        if ((colors.blue)> colors.green && colors.blue>0.0013)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
