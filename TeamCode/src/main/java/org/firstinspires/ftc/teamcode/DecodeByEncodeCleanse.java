@@ -230,6 +230,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
             if (gamepad1.y) {
                 double currentPos = getSpindexerAngleDeg();
                 double targetPos = intakeSlotPositions[currentSlot];
+                long stepTime = System.currentTimeMillis() - sequenceStartTime;
 
 
                 // 1. Calculate Forward Distance (to ensure it only spins one way)
@@ -239,6 +240,12 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                 }
 
                 switch (intakeStep) {
+                    case -1: // INITIAL DECISION (Lazy Logic)
+                        currentSlot = getClosestForwardSlot(); // Use the helper method
+                        intakeStep = 0;
+                        sequenceStartTime = System.currentTimeMillis();
+                        lastError = 0;
+                        break;
                     case 0: // ALIGNING
                         // 2. PID Calculation
                         double dt = pidTimer.seconds();
@@ -262,7 +269,11 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                             spindexer.setPower(power * voltageComp);
                         } else {
                             spindexer.setPower(0);
-                            intakeStep = 1; // Move to checking the slot
+                            // Wait for settle before turning on the intake motor
+                            if (stepTime >= 50) {
+                                intakeStep = 1;
+                                sequenceStartTime = System.currentTimeMillis();
+                            }
                         }
                         break;
 
@@ -281,33 +292,31 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                 // Reset logic when button is released
                 spindexer.setPower(0);
                 intake.setPower(0);
-                intakeStep = 0;
+                intakeStep = -1;
                 lastError = 0;
             }
+            telemetry.addData("intake", intakeStep);
+            telemetry.update();
 
-            if (gamepad1.right_bumper) { //all colors
+            if (gamepad1.right_bumper) { // general shoot
                 double currentSPos = getSpindexerAngleDeg();
-                double targetSPos = shootSlotPositions[currentShootSlot];
-
-                // Calculate Forward Distance
-                double error = targetSPos - currentSPos;
-                if (error < 0) error += 360;
-
-                // Time since the current step started
                 long stepTime = System.currentTimeMillis() - sequenceStartTime;
 
                 switch (shootStep) {
+                    case -1: // NEW: INITIAL DECISION
+                        currentShootSlot = getClosestShootSlot();
+                        shootStep = 0;
+                        sequenceStartTime = System.currentTimeMillis();
+                        break;
+
                     case 0: // ALIGNING
+                        double targetSPos = shootSlotPositions[currentShootSlot];
+                        double error = targetSPos - currentSPos;
+                        if (error < 0) error += 360;
+
                         double dt = pidTimer.seconds();
                         pidTimer.reset();
-
-                        // 1. Get current voltage
-                        double currentVoltage = batteryVoltageSensor.getVoltage();
-
-// 2. Calculate the compensation factor (Target 12V / Current)
-// We use Math.max to prevent division by zero just in case
-                        double voltageComp = 12.0 / Math.max(currentVoltage, 1.0);
-
+                        double voltageComp = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
                         double derivative = (error - lastError) / dt;
                         double power = (error * kP) + (derivative * kD);
                         lastError = error;
@@ -315,28 +324,28 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         power = Math.max(-0.5, Math.min(0.5, power));
 
                         if (error > PositionToleranceDeg) {
-
                             spindexer.setPower(power * voltageComp);
-                            sequenceStartTime = System.currentTimeMillis(); // Keep resetting until we are in tolerance
-                        } else if (error <= PositionToleranceDeg) {
-                            //pastCheck = (purpleDetect() || greenDetect());
+                            sequenceStartTime = System.currentTimeMillis();
+                        } else {
                             spindexer.setPower(0);
-                            if (stepTime >= 200) { // Increased settle time slightly
+                            if (stepTime >= 100) { // Wait for settle
                                 shootStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
-                                emptySlotCounter = 0; // Reset counter for the check
+                                emptySlotCounter = 0;
                             }
                         }
                         break;
 
                     case 1: // CHECK FOR BALL
+                        // If we see color, IMMEDIATELY pop
                         if (greenDetect() || purpleDetect() || isTargetColorDetected()) {
                             shootStep = 2;
                             sequenceStartTime = System.currentTimeMillis();
                         } else {
-                            // No ball? Move to the next slot index and restart alignment
+                            // Wait for the EMPTY_CONFIRM_THRESHOLD before giving up
                             emptySlotCounter++;
                             if (emptySlotCounter >= EMPTY_CONFIRM_THRESHOLD) {
+                                // Go to NEXT slot in order
                                 currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
                                 shootStep = 0;
                                 sequenceStartTime = System.currentTimeMillis();
@@ -345,86 +354,72 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         break;
 
                     case 2: // POP UP
-                        popUp.setPosition(0.4); // Target position
-                        // Give the servo 320ms to reach the top
+                        popUp.setPosition(0.4);
                         if (stepTime >= 300) {
                             shootStep = 3;
                             sequenceStartTime = System.currentTimeMillis();
                         }
                         break;
 
-                    case 3: // RETRACT
-                        popUp.setPosition(0); // Home position
-
-                        // Give the servo 295ms to clear the turret area before moving spindexer again
-                        if (stepTime >= 285) {
-                            shootStep = 4;
+                    case 3: // RETRACT & PREPARE NEXT
+                        popUp.setPosition(0);
+                        // START MOVING TO NEXT SLOT WHILE RETRACTING
+                        if (stepTime >= 150) {
+                            currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
+                            shootStep = 0;
+                            sequenceStartTime = System.currentTimeMillis();
                         }
-                        break;
-
-                    case 4: // FINISH / REPEAT
-                        // If you want it to automatically look for the next ball, reset to step 0
-                        // and increment the slot.
-                        currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
-                        shootStep = 0;
-                        sequenceStartTime = System.currentTimeMillis();
                         break;
                 }
             }
             else if (gamepad1.dpad_left) { //just green
                 double currentSPos = getSpindexerAngleDeg();
-                double targetSPos = shootSlotPositions[currentShootSlot];
-
-                // Calculate Forward Distance
-                double error = targetSPos - currentSPos;
-                if (error < 0) error += 360;
-
-                // Time since the current step started
                 long stepTime = System.currentTimeMillis() - sequenceStartTime;
 
                 switch (shootStep) {
+                    case -1: // NEW: INITIAL DECISION
+                        currentShootSlot = getClosestShootSlot();
+                        shootStep = 0;
+                        sequenceStartTime = System.currentTimeMillis();
+                        break;
+
                     case 0: // ALIGNING
+                        double targetSPos = shootSlotPositions[currentShootSlot];
+                        double error = targetSPos - currentSPos;
+                        if (error < 0) error += 360;
+
                         double dt = pidTimer.seconds();
                         pidTimer.reset();
-
-                        // 1. Get current voltage
-                        double currentVoltage = batteryVoltageSensor.getVoltage();
-
-// 2. Calculate the compensation factor (Target 12V / Current)
-// We use Math.max to prevent division by zero just in case
-                        double voltageComp = 12.0 / Math.max(currentVoltage, 1.0);
-
+                        double voltageComp = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
                         double derivative = (error - lastError) / dt;
                         double power = (error * kP) + (derivative * kD);
                         lastError = error;
 
-                        power = Math.max(-0.45, Math.min(0.45, power));
+                        power = Math.max(-0.5, Math.min(0.5, power));
 
                         if (error > PositionToleranceDeg) {
                             spindexer.setPower(power * voltageComp);
-                            sequenceStartTime = System.currentTimeMillis(); // Keep resetting until we are in tolerance
-                        } else if (error <= PositionToleranceDeg) {
-                            //pastCheck = greenDetect();
+                            sequenceStartTime = System.currentTimeMillis();
+                        } else {
                             spindexer.setPower(0);
-                            if (stepTime >= 150) { // Increased settle time slightly
+                            if (stepTime >= 100) { // Wait for settle
                                 shootStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
-                                emptySlotCounter = 0; // Reset counter for the check
+                                emptySlotCounter = 0;
                             }
                         }
                         break;
 
                     case 1: // CHECK FOR BALL
+                        // If we see color, IMMEDIATELY pop
                         if (greenDetect()) {
-                            if (stepTime>=50)
-                            {
-                                shootStep = 2;
-                                sequenceStartTime = System.currentTimeMillis();
-                            }
+                            shootStep = 2;
+                            sequenceStartTime = System.currentTimeMillis();
                         } else {
-                            // No ball? Move to the next slot index and restart alignment
+                            // Wait for the EMPTY_CONFIRM_THRESHOLD before giving up
                             emptySlotCounter++;
                             if (emptySlotCounter >= EMPTY_CONFIRM_THRESHOLD) {
+                                // Go to NEXT slot in order
                                 currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
                                 shootStep = 0;
                                 sequenceStartTime = System.currentTimeMillis();
@@ -433,86 +428,72 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         break;
 
                     case 2: // POP UP
-                        popUp.setPosition(0.4); // Target position
-                        // Give the servo 320ms to reach the top
+                        popUp.setPosition(0.4);
                         if (stepTime >= 300) {
                             shootStep = 3;
                             sequenceStartTime = System.currentTimeMillis();
                         }
                         break;
 
-                    case 3: // RETRACT
-                        popUp.setPosition(0); // Home position
-
-                        // Give the servo 295ms to clear the turret area before moving spindexer again
-                        if (stepTime >= 285) {
-                            shootStep = 4;
+                    case 3: // RETRACT & PREPARE NEXT
+                        popUp.setPosition(0);
+                        // START MOVING TO NEXT SLOT WHILE RETRACTING
+                        if (stepTime >= 150) {
+                            currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
+                            shootStep = 0;
+                            sequenceStartTime = System.currentTimeMillis();
                         }
-                        break;
-
-                    case 4: // FINISH / REPEAT
-                        // If you want it to automatically look for the next ball, reset to step 0
-                        // and increment the slot.
-                        currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
-                        shootStep = 0;
-                        sequenceStartTime = System.currentTimeMillis();
                         break;
                 }
             }
             else if (gamepad1.dpad_right) { //just purple
                 double currentSPos = getSpindexerAngleDeg();
-                double targetSPos = shootSlotPositions[currentShootSlot];
-
-                // Calculate Forward Distance
-                double error = targetSPos - currentSPos;
-                if (error < 0) error += 360;
-
-                // Time since the current step started
                 long stepTime = System.currentTimeMillis() - sequenceStartTime;
 
                 switch (shootStep) {
+                    case -1: // NEW: INITIAL DECISION
+                        currentShootSlot = getClosestShootSlot();
+                        shootStep = 0;
+                        sequenceStartTime = System.currentTimeMillis();
+                        break;
+
                     case 0: // ALIGNING
+                        double targetSPos = shootSlotPositions[currentShootSlot];
+                        double error = targetSPos - currentSPos;
+                        if (error < 0) error += 360;
+
                         double dt = pidTimer.seconds();
                         pidTimer.reset();
-
-                        // 1. Get current voltage
-                        double currentVoltage = batteryVoltageSensor.getVoltage();
-
-// 2. Calculate the compensation factor (Target 12V / Current)
-// We use Math.max to prevent division by zero just in case
-                        double voltageComp = 12.0 / Math.max(currentVoltage, 1.0);
-
+                        double voltageComp = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
                         double derivative = (error - lastError) / dt;
                         double power = (error * kP) + (derivative * kD);
                         lastError = error;
 
-                        power = Math.max(-0.45, Math.min(0.45, power));
+                        power = Math.max(-0.5, Math.min(0.5, power));
 
                         if (error > PositionToleranceDeg) {
                             spindexer.setPower(power * voltageComp);
-                            sequenceStartTime = System.currentTimeMillis(); // Keep resetting until we are in tolerance
-                        } else if (error <= PositionToleranceDeg) {
-                            //pastCheck = purpleDetect();
+                            sequenceStartTime = System.currentTimeMillis();
+                        } else {
                             spindexer.setPower(0);
-                            if (stepTime >= 150) { // Increased settle time slightly
+                            if (stepTime >= 100) { // Wait for settle
                                 shootStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
-                                emptySlotCounter = 0; // Reset counter for the check
+                                emptySlotCounter = 0;
                             }
                         }
                         break;
 
                     case 1: // CHECK FOR BALL
+                        // If we see color, IMMEDIATELY pop
                         if (purpleDetect()) {
-                            if (stepTime>=50)
-                            {
-                                shootStep = 2;
-                                sequenceStartTime = System.currentTimeMillis();
-                            }
+                            shootStep = 2;
+                            sequenceStartTime = System.currentTimeMillis();
                         } else {
-                            // No ball? Move to the next slot index and restart alignment
+                            // Wait for the EMPTY_CONFIRM_THRESHOLD before giving up
                             emptySlotCounter++;
                             if (emptySlotCounter >= EMPTY_CONFIRM_THRESHOLD) {
+                                // Go to NEXT slot in order
                                 currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
                                 shootStep = 0;
                                 sequenceStartTime = System.currentTimeMillis();
@@ -521,38 +502,32 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         break;
 
                     case 2: // POP UP
-                        popUp.setPosition(0.4); // Target position
-                        // Give the servo 320ms to reach the top
+                        popUp.setPosition(0.4);
                         if (stepTime >= 300) {
                             shootStep = 3;
                             sequenceStartTime = System.currentTimeMillis();
                         }
                         break;
 
-                    case 3: // RETRACT
-                        popUp.setPosition(0); // Home position
-
-                        // Give the servo 295ms to clear the turret area before moving spindexer again
-                        if (stepTime >= 285) {
-                            shootStep = 4;
+                    case 3: // RETRACT & PREPARE NEXT
+                        popUp.setPosition(0);
+                        // START MOVING TO NEXT SLOT WHILE RETRACTING
+                        if (stepTime >= 150) {
+                            currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
+                            shootStep = 0;
+                            sequenceStartTime = System.currentTimeMillis();
                         }
-                        break;
-
-                    case 4: // FINISH / REPEAT
-                        // If you want it to automatically look for the next ball, reset to step 0
-                        // and increment the slot.
-                        currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
-                        shootStep = 0;
-                        sequenceStartTime = System.currentTimeMillis();
                         break;
                 }
             }
             else if (!gamepad1.right_bumper && !gamepad1.y && !gamepad1.dpad_left && !gamepad1.dpad_right){
                 spindexer.setPower(0);
-                shootStep = 0;
+                shootStep = -1;
                 lastError = 0;
                 popUp.setPosition(0);
             }
+
+
 
 
 
@@ -850,6 +825,44 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
         return finalAngle;
     }
+    private int getClosestShootSlot() {
+        double currentPos = getSpindexerAngleDeg();
+        int bestSlot = 0;
+        double minForwardDistance = 400;
+
+        for (int i = 0; i < shootSlotPositions.length; i++) {
+            double distance = shootSlotPositions[i] - currentPos;
+            if (distance < 0) distance += 360; // Forward only
+
+            if (distance < minForwardDistance) {
+                minForwardDistance = distance;
+                bestSlot = i;
+            }
+        }
+        return bestSlot;
+    }
+    private int getClosestForwardSlot() {
+        double currentPos = getSpindexerAngleDeg();
+        int bestSlot = currentSlot;
+        double minForwardDistance = 400; // Larger than 360
+
+        for (int i = 0; i < intakeSlotPositions.length; i++) {
+            double distance = intakeSlotPositions[i] - currentPos;
+
+            // If the distance is negative, it means the slot is "behind" us.
+            // We add 360 to find the distance to reach it by spinning forward.
+            if (distance < 0) {
+                distance += 360;
+            }
+
+            if (distance < minForwardDistance) {
+                minForwardDistance = distance;
+                bestSlot = i;
+            }
+        }
+        return bestSlot;
+    }
+
 
 
 }
