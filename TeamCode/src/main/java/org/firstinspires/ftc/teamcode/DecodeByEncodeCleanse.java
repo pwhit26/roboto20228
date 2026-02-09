@@ -486,7 +486,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         double power = (error * kP) + (derivative * kD);
                         lastError = error;
 
-                        power = Math.max(-0.5, Math.min(0.5, power));
+                        power = Math.max(-0.45, Math.min(0.45, power));
 
                         if (error > PositionToleranceDeg) {
                             spindexer.setPower(power * voltageComp);
@@ -757,7 +757,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
         NormalizedRGBA colors = color0.getNormalizedColors();
         NormalizedRGBA extra = colorBack.getNormalizedColors();
 
-        if (((colors.blue)> colors.green && colors.blue>0.0012) || (extra.blue>extra.green && extra.blue>0.0012))
+        if (((colors.blue)> colors.green && colors.blue>0.001) || (extra.blue>extra.green && extra.blue>0.001))
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
