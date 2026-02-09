@@ -76,6 +76,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     // Add this variable at the top of your class with the others
     private int emptySlotCounter = 0;
     private static final int EMPTY_CONFIRM_THRESHOLD = 6; // How many loops to wait
+    boolean pastCheck;
 
 
     Servo angleTurret0, angleTurret1, popUp;
@@ -230,6 +231,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                 double currentPos = getSpindexerAngleDeg();
                 double targetPos = intakeSlotPositions[currentSlot];
 
+
                 // 1. Calculate Forward Distance (to ensure it only spins one way)
                 double error = targetPos - currentPos;
                 if (error < 0) {
@@ -310,14 +312,16 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         double power = (error * kP) + (derivative * kD);
                         lastError = error;
 
-                        power = Math.max(-0.425, Math.min(0.425, power));
+                        power = Math.max(-0.5, Math.min(0.5, power));
 
                         if (error > PositionToleranceDeg) {
+
                             spindexer.setPower(power * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Keep resetting until we are in tolerance
                         } else if (error <= PositionToleranceDeg) {
+                            //pastCheck = (purpleDetect() || greenDetect());
                             spindexer.setPower(0);
-                            if (stepTime >= 250) { // Increased settle time slightly
+                            if (stepTime >= 200) { // Increased settle time slightly
                                 shootStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                                 emptySlotCounter = 0; // Reset counter for the check
@@ -326,12 +330,9 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         break;
 
                     case 1: // CHECK FOR BALL
-                        if (greenDetect() || purpleDetect()) {
-                            if (stepTime>=75)
-                            {
-                                shootStep = 2;
-                                sequenceStartTime = System.currentTimeMillis();
-                            }
+                        if (greenDetect() || purpleDetect() || isTargetColorDetected()) {
+                            shootStep = 2;
+                            sequenceStartTime = System.currentTimeMillis();
                         } else {
                             // No ball? Move to the next slot index and restart alignment
                             emptySlotCounter++;
@@ -403,8 +404,9 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                             spindexer.setPower(power * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Keep resetting until we are in tolerance
                         } else if (error <= PositionToleranceDeg) {
+                            //pastCheck = greenDetect();
                             spindexer.setPower(0);
-                            if (stepTime >= 220) { // Increased settle time slightly
+                            if (stepTime >= 150) { // Increased settle time slightly
                                 shootStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                                 emptySlotCounter = 0; // Reset counter for the check
@@ -490,8 +492,9 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                             spindexer.setPower(power * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Keep resetting until we are in tolerance
                         } else if (error <= PositionToleranceDeg) {
+                            //pastCheck = purpleDetect();
                             spindexer.setPower(0);
-                            if (stepTime >= 220) { // Increased settle time slightly
+                            if (stepTime >= 150) { // Increased settle time slightly
                                 shootStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                                 emptySlotCounter = 0; // Reset counter for the check
@@ -561,14 +564,14 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
         int green = color0.green();
         int blue = color0.blue();
         NormalizedRGBA colors = color0.getNormalizedColors();
-        if ((colors.blue)> colors.green && colors.blue>0.0017)
+        if ((colors.blue)> colors.green && colors.blue>0.0015)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
             telemetry.update();
             return true;
 
-        } else if(colors.green>(colors.blue) && colors.green>0.00195) {
+        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -736,7 +739,8 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     private boolean greenDetect()
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0013) {
+        NormalizedRGBA extra = colorBack.getNormalizedColors();
+        if((colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0013) || (extra.green>extra.blue && extra.green>extra.red && extra.green>0.0013)) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -751,8 +755,9 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     private boolean purpleDetect()
     {
         NormalizedRGBA colors = color0.getNormalizedColors();
+        NormalizedRGBA extra = colorBack.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.0013)
+        if (((colors.blue)> colors.green && colors.blue>0.0012) || (extra.blue>extra.green && extra.blue>0.0012))
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
