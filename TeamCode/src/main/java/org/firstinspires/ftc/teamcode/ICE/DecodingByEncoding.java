@@ -66,7 +66,7 @@ public class DecodingByEncoding extends LinearOpMode {
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
-    double PositionToleranceDeg = 5;
+    double PositionToleranceDeg = 8;
     static final double max_spin_power = 0.5;
     double integral = 0;
     int currentSlot = 0;
@@ -77,6 +77,10 @@ public class DecodingByEncoding extends LinearOpMode {
     private int emptySlotCounter = 0;
     private static final int EMPTY_CONFIRM_THRESHOLD = 6; // How many loops to wait
     boolean pastCheck;
+    private Follower poseUpdater;
+    private Follower drive;
+    private final Pose GOAL_POSE = new Pose(72, 36);
+    private double lastTurretAngleDeg = 0;
 
 
     Servo angleTurret0, angleTurret1, popUp;
@@ -85,6 +89,11 @@ public class DecodingByEncoding extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
+
+
+
+        // IMPORTANT: Start TeleOp with the ending position of Auto
+        //poseUpdater.setStartingPose(PoseStorage.lastPose);
         //drive motor init
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
@@ -119,6 +128,7 @@ public class DecodingByEncoding extends LinearOpMode {
         turret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1);
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        turnTurret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1); // Put in actual numbers these are placeholders
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
         spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         //spindexer.setTargetPosition(0);
@@ -264,13 +274,16 @@ public class DecodingByEncoding extends LinearOpMode {
 
                         // Cap the power so it doesn't go crazy
                         power = Math.max(-0.5, Math.min(0.5, power));
+                        double minPower = 0.15; // Minimum power to overcome friction
 
                         if (error > PositionToleranceDeg) {
+                            double finalPower = Math.max(power, minPower);
                             spindexer.setPower(power * voltageComp);
+                            sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
                             // Wait for settle before turning on the intake motor
-                            if (stepTime >= 30) {
+                            if (stepTime >= 40) {
                                 intakeStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                             }
@@ -713,9 +726,9 @@ public class DecodingByEncoding extends LinearOpMode {
 
     private boolean greenDetect()
     {
-        NormalizedRGBA colors = color0.getNormalizedColors();
-        NormalizedRGBA extra = colorBack.getNormalizedColors();
-        if((colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0013) || (extra.green>extra.blue && extra.green>extra.red && extra.green>0.0013)) {
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
+
+        if((colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0013)) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -729,10 +742,10 @@ public class DecodingByEncoding extends LinearOpMode {
     }
     private boolean purpleDetect()
     {
-        NormalizedRGBA colors = color0.getNormalizedColors();
-        NormalizedRGBA extra = colorBack.getNormalizedColors();
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
 
-        if (((colors.blue)> colors.green && colors.blue>0.001) || (extra.blue>extra.green && extra.blue>0.001))
+
+        if (((colors.blue)> colors.green && colors.blue>0.001))
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
@@ -861,6 +874,43 @@ public class DecodingByEncoding extends LinearOpMode {
             }
         }
         return bestSlot;
+    }
+    private double alignTurret(double x, double y, double heading, Pose target)
+    {
+        double dx = target.getX() - x;
+        double dy = target.getY() - y;
+        double angleToGoal = Math.toDegrees(Math.atan2(dy, dx));
+        double turretAngle = -(angleToGoal - heading);
+
+        while (turretAngle>180) turretAngle -=360;
+        while (turretAngle<-180) turretAngle +=360;
+
+        double diff = turretAngle - lastTurretAngleDeg;
+        if (diff > 90)
+        {
+            turretAngle -=360;
+        }
+        else if (diff < -90)
+        {
+            turretAngle +=360;
+        }
+
+        while (turretAngle>180) turretAngle -=360;
+        while (turretAngle<-180) turretAngle +=360;
+
+        lastTurretAngleDeg = turretAngle;
+        return turretAngle;
+    }
+    public void spinnyTurretAngleThingy(double turretAngle)
+    {
+        if (turretAngle > 4)
+        {
+            turnTurret.setVelocity(900);
+        }
+        else if (turretAngle < -2)
+        {
+            turnTurret.setVelocity(-900);
+        }
     }
 
 

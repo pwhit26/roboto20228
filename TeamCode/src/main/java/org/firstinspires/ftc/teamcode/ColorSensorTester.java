@@ -48,6 +48,7 @@ public class ColorSensorTester extends LinearOpMode {
     private double v;
     private int initialPos=0;
     long Id;
+    String[] scanResults = {"open", "open", "open"};
 
 
     Servo angleTurret0, angleTurret1, popUp;
@@ -91,7 +92,7 @@ public class ColorSensorTester extends LinearOpMode {
         spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
-        //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+        color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
         colorFront=hardwareMap.get(RevColorSensorV3.class, "colorFront");
 
 
@@ -748,6 +749,10 @@ public class ColorSensorTester extends LinearOpMode {
             {
                 isSpotTaken();
             }
+            if (gamepad2.dpad_down)
+            {
+                scan();
+            }
 
 
             telemetry.update();
@@ -1043,5 +1048,53 @@ public class ColorSensorTester extends LinearOpMode {
             spindexer.setPower(0);
             popUp.setPosition(0);
         }//hi
+    }
+    public void scan()
+    {
+        NormalizedRGBA in2Pos = colorBack.getNormalizedColors();
+        NormalizedRGBA in0Pos = color0.getNormalizedColors();
+        NormalizedRGBA in1Pos = color1.getNormalizedColors();
+
+        if (in0Pos.blue > 0.001 && in0Pos.blue > in0Pos.green)
+        {
+            scanResults[0] = "purple";
+        }
+        else if (in0Pos.green>0.0013)
+        {
+            scanResults[0] = "green";
+        }
+        else {
+            scanResults[0] = "open";
+        }
+
+        if (in1Pos.blue > 0.001 && in1Pos.blue > in1Pos.green)
+        {
+            scanResults[1] = "purple";
+        }
+        else if (in1Pos.green > 0.0013)
+        {
+            scanResults[1] = "green";
+        }
+        else {
+            scanResults[1] = "open";
+        }
+
+        if (in2Pos.blue > 0.0012 && in2Pos.blue > in2Pos.green)
+        {
+            scanResults[2] = "purple";
+        }
+        else if (in2Pos.green > 0.0013)
+        {
+            scanResults[2] = "green";
+        }
+        else {
+            scanResults[2] = "open";
+        }
+
+
+        telemetry.addData("scan results: ",scanResults[0] + ", " + scanResults[1] + ", " + scanResults[2]);
+        telemetry.update();
+
+
     }
 }
