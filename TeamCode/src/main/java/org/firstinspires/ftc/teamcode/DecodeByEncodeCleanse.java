@@ -62,7 +62,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     int[] intakeSlotPositions = {110, 230, 355};
     int[] shootSlotPositions = {65, 190, 305};
     static final double kP = 0.0155; // Start small
-    static final double kD = 0.0006; // Helps prevent overshoot
+    static final double kD = 0.0008; // Helps prevent overshoot
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
@@ -82,7 +82,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     private final Pose GOAL_POSE = new Pose(72, 36);
     private double lastTurretAngleDeg = 0;
     String[] scanResults = {"open", "open", "open"};
-    boolean needScan = false;
+    boolean needScan = true;
 
 
 
@@ -277,15 +277,16 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         lastError = error;
 
                         // Cap the power so it doesn't go crazy
-                        power = Math.max(-0.45, Math.min(0.45, power));
-                        double minPower = 0.1; // Minimum power to overcome friction
+                        power = Math.max(-0.5, Math.min(0.5, power));
+                        double minPower = 0.125; // Minimum power to overcome friction
 
-                        if (error > PositionToleranceDeg) {
+                        if (error > PositionToleranceDeg ) {
                             double finalPower = Math.max(power, minPower);
                             spindexer.setPower(power * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
+
                             // Wait for settle before turning on the intake motor
                             if (stepTime >= 40) {
                                 intakeStep = 1;
