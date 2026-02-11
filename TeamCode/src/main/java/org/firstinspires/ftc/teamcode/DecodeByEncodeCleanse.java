@@ -66,7 +66,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
-    double PositionToleranceDeg = 5;
+    double PositionToleranceDeg = 8;
     static final double max_spin_power = 0.5;
     double integral = 0;
     int currentSlot = 0;
@@ -77,6 +77,13 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     private int emptySlotCounter = 0;
     private static final int EMPTY_CONFIRM_THRESHOLD = 6; // How many loops to wait
     boolean pastCheck;
+    private Follower poseUpdater;
+    private Follower drive;
+    private final Pose GOAL_POSE = new Pose(72, 36);
+    private double lastTurretAngleDeg = 0;
+    String[] scanResults = {"open", "open", "open"};
+    boolean needScan = false;
+
 
 
     Servo angleTurret0, angleTurret1, popUp;
@@ -85,6 +92,11 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
+
+
+
+        // IMPORTANT: Start TeleOp with the ending position of Auto
+        //poseUpdater.setStartingPose(PoseStorage.lastPo se);
         //drive motor init
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
@@ -119,6 +131,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
         turret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1);
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        turnTurret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1); // Put in actual numbers these are placeholders
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
         spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         //spindexer.setTargetPosition(0);
@@ -126,7 +139,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
         //spindexer.setPower(0.3);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
-        //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+        color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
         colorFront = hardwareMap.get(RevColorSensorV3.class, "colorFront");
 
 
@@ -241,6 +254,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                 switch (intakeStep) {
                     case -1: // INITIAL DECISION (Lazy Logic)
+                        needScan = true;
                         currentSlot = getClosestForwardSlot(); // Use the helper method
                         intakeStep = 0;
                         sequenceStartTime = System.currentTimeMillis();
@@ -263,14 +277,17 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         lastError = error;
 
                         // Cap the power so it doesn't go crazy
-                        power = Math.max(-0.5, Math.min(0.5, power));
+                        power = Math.max(-0.45, Math.min(0.45, power));
+                        double minPower = 0.1; // Minimum power to overcome friction
 
                         if (error > PositionToleranceDeg) {
+                            double finalPower = Math.max(power, minPower);
                             spindexer.setPower(power * voltageComp);
+                            sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
                             // Wait for settle before turning on the intake motor
-                            if (stepTime >= 50) {
+                            if (stepTime >= 40) {
                                 intakeStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                             }
@@ -278,6 +295,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         break;
 
                     case 1: // INTAKING
+                        needScan = true;
                         if (!isSpotTaken()) {
                             intake.setPower(0.85);
                         } else {
@@ -323,32 +341,73 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                         power = Math.max(-0.5, Math.min(0.5, power));
 
-                        if (error > PositionToleranceDeg) {
-                            spindexer.setPower(power * voltageComp);
-                            sequenceStartTime = System.currentTimeMillis();
-                        } else {
-                            spindexer.setPower(0);
-                            if (stepTime >= 100) { // Wait for settle
-                                shootStep = 1;
+                        if (needScan)
+                        {
+                            if (error > PositionToleranceDeg) {
+                                spindexer.setPower(power * voltageComp);
                                 sequenceStartTime = System.currentTimeMillis();
-                                emptySlotCounter = 0;
+                            } else {
+                                spindexer.setPower(0);
+                                scan();
+                                if (stepTime >= 50) {
+                                    shootStep = 1;
+                                    sequenceStartTime = System.currentTimeMillis();
+                                    emptySlotCounter = 0;
+                                }
                             }
                         }
+                        else {
+                            shootStep = 1;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+
+
                         break;
 
                     case 1: // CHECK FOR BALL
-                        // If we see color, IMMEDIATELY pop
-                        if (greenDetect() || purpleDetect() || isTargetColorDetected()) {
-                            shootStep = 2;
+                        double tPos = -1;
+                        if (scanResults[2].equals("green") || scanResults[2].equals("purple"))
+                        {
+
+                            tPos = shootSlotPositions[currentShootSlot];
+                        }
+                        else if (scanResults[0].equals("green") || scanResults[0].equals("purple"))
+                        {
+                            tPos = shootSlotPositions[(currentShootSlot + 1) % shootSlotPositions.length];
+
+                        }
+                        else if (scanResults[1].equals("green") || scanResults[1].equals("purple"))
+                        {
+                            tPos = shootSlotPositions[(currentShootSlot + 2) % shootSlotPositions.length];
+                        }
+                        else {
+                            //all slots open
+                            shootStep = 0;
                             sequenceStartTime = System.currentTimeMillis();
-                        } else {
-                            // Wait for the EMPTY_CONFIRM_THRESHOLD before giving up
-                            emptySlotCounter++;
-                            if (emptySlotCounter >= EMPTY_CONFIRM_THRESHOLD) {
-                                // Go to NEXT slot in order
-                                currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
-                                shootStep = 0;
+                        }
+                        if (tPos !=- 1)
+                        {
+                            double err = tPos - currentSPos;
+                            if (err < 0) err += 360;
+
+                            double timeee = pidTimer.seconds();
+                            pidTimer.reset();
+                            double voltage = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
+                            double deriv = (err - lastError) / timeee;
+                            double pow = (err * kP) + (deriv * kD);
+                            lastError = err;
+                            pow = Math.max(-0.5, Math.min(0.5, pow));
+
+                            if (err > PositionToleranceDeg) {
+                                spindexer.setPower(pow * voltage);
                                 sequenceStartTime = System.currentTimeMillis();
+                            } else {
+                                spindexer.setPower(0);
+                                if (stepTime >= 40) { // Wait for settle
+                                    shootStep = 2;
+                                    sequenceStartTime = System.currentTimeMillis();
+                                    emptySlotCounter = 0;
+                                }
                             }
                         }
                         break;
@@ -362,6 +421,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         break;
 
                     case 3: // RETRACT & PREPARE NEXT
+                        needScan = false;
                         popUp.setPosition(0);
                         // START MOVING TO NEXT SLOT WHILE RETRACTING
                         if (stepTime >= 150) {
@@ -402,7 +462,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                             sequenceStartTime = System.currentTimeMillis();
                         } else {
                             spindexer.setPower(0);
-                            if (stepTime >= 100) { // Wait for settle
+                            if (stepTime >= 70) { // Wait for settle
                                 shootStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                                 emptySlotCounter = 0;
@@ -436,6 +496,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         break;
 
                     case 3: // RETRACT & PREPARE NEXT
+                        needScan = false;
                         popUp.setPosition(0);
                         // START MOVING TO NEXT SLOT WHILE RETRACTING
                         if (stepTime >= 150) {
@@ -476,7 +537,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                             sequenceStartTime = System.currentTimeMillis();
                         } else {
                             spindexer.setPower(0);
-                            if (stepTime >= 100) { // Wait for settle
+                            if (stepTime >= 70) { // Wait for settle
                                 shootStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                                 emptySlotCounter = 0;
@@ -510,6 +571,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         break;
 
                     case 3: // RETRACT & PREPARE NEXT
+                        needScan = false;
                         popUp.setPosition(0);
                         // START MOVING TO NEXT SLOT WHILE RETRACTING
                         if (stepTime >= 150) {
@@ -713,9 +775,9 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
     private boolean greenDetect()
     {
-        NormalizedRGBA colors = color0.getNormalizedColors();
-        NormalizedRGBA extra = colorBack.getNormalizedColors();
-        if((colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0013) || (extra.green>extra.blue && extra.green>extra.red && extra.green>0.0013)) {
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
+
+        if((colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0013)) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -729,10 +791,10 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     }
     private boolean purpleDetect()
     {
-        NormalizedRGBA colors = color0.getNormalizedColors();
-        NormalizedRGBA extra = colorBack.getNormalizedColors();
+        NormalizedRGBA colors = colorBack.getNormalizedColors();
 
-        if (((colors.blue)> colors.green && colors.blue>0.001) || (extra.blue>extra.green && extra.blue>0.001))
+
+        if (((colors.blue)> colors.green && colors.blue>0.001))
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
@@ -862,8 +924,90 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
         }
         return bestSlot;
     }
+    private double alignTurret(double x, double y, double heading, Pose target)
+    {
+        double dx = target.getX() - x;
+        double dy = target.getY() - y;
+        double angleToGoal = Math.toDegrees(Math.atan2(dy, dx));
+        double turretAngle = -(angleToGoal - heading);
+
+        while (turretAngle>180) turretAngle -=360;
+        while (turretAngle<-180) turretAngle +=360;
+
+        double diff = turretAngle - lastTurretAngleDeg;
+        if (diff > 90)
+        {
+            turretAngle -=360;
+        }
+        else if (diff < -90)
+        {
+            turretAngle +=360;
+        }
+
+        while (turretAngle>180) turretAngle -=360;
+        while (turretAngle<-180) turretAngle +=360;
+
+        lastTurretAngleDeg = turretAngle;
+        return turretAngle;
+    }
+    public void spinnyTurretAngleThingy(double turretAngle)
+    {
+        if (turretAngle > 4)
+        {
+            turnTurret.setVelocity(900);
+        }
+        else if (turretAngle < -2)
+        {
+            turnTurret.setVelocity(-900);
+        }
+    }
+    public void scan()
+    {
+        NormalizedRGBA in2Pos = colorBack.getNormalizedColors();
+        NormalizedRGBA in0Pos = color0.getNormalizedColors();
+        NormalizedRGBA in1Pos = color1.getNormalizedColors();
+
+        if (in0Pos.blue > 0.001 && in0Pos.blue > in0Pos.green)
+        {
+            scanResults[0] = "purple";
+        }
+        else if (in0Pos.green>0.0013)
+        {
+            scanResults[0] = "green";
+        }
+        else {
+            scanResults[0] = "open";
+        }
+
+        if (in1Pos.blue > 0.001 && in1Pos.blue > in1Pos.green)
+        {
+            scanResults[1] = "purple";
+        }
+        else if (in1Pos.green > 0.0013)
+        {
+            scanResults[1] = "green";
+        }
+        else {
+            scanResults[1] = "open";
+        }
+
+        if (in2Pos.blue > 0.0012 && in2Pos.blue > in2Pos.green)
+        {
+            scanResults[2] = "purple";
+        }
+        else if (in2Pos.green > 0.0013)
+        {
+            scanResults[2] = "green";
+        }
+        else {
+            scanResults[2] = "open";
+        }
 
 
+        telemetry.addData("scan results: ",scanResults[0] + ", " + scanResults[1] + ", " + scanResults[2]);
+        telemetry.update();
 
+
+    }
 }
 
