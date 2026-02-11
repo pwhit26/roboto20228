@@ -83,6 +83,9 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     private double lastTurretAngleDeg = 0;
     String[] scanResults = {"open", "open", "open"};
     boolean needScan = true;
+    double sLastError = 0;
+    private int intakeConfirmCounter = 0;
+    private static final int INTAKE_CONFIRM_THRESHOLD = 4;
 
 
 
@@ -254,7 +257,6 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                 switch (intakeStep) {
                     case -1: // INITIAL DECISION (Lazy Logic)
-                        needScan = true;
                         currentSlot = getClosestForwardSlot(); // Use the helper method
                         intakeStep = 0;
                         sequenceStartTime = System.currentTimeMillis();
@@ -278,15 +280,14 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                         // Cap the power so it doesn't go crazy
                         power = Math.max(-0.5, Math.min(0.5, power));
-                        double minPower = 0.125; // Minimum power to overcome friction
+                        double minPower = 0.15; // Minimum power to overcome friction
 
-                        if (error > PositionToleranceDeg ) {
-                            double finalPower = Math.max(power, minPower);
-                            spindexer.setPower(power * voltageComp);
+                        if (error > PositionToleranceDeg) {
+                            double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
+                            spindexer.setPower(finalPower * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
-
                             // Wait for settle before turning on the intake motor
                             if (stepTime >= 40) {
                                 intakeStep = 1;
@@ -294,16 +295,20 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                             }
                         }
                         break;
-
-                    case 1: // INTAKING
-                        needScan = true;
+                    case 1:
                         if (!isSpotTaken()) {
                             intake.setPower(0.85);
+                            intakeConfirmCounter = 0;
                         } else {
-                            // Ball detected! Stop and move to next slot
-                            intake.setPower(0);
-                            currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
-                            intakeStep = 0; // Loop back to align the next empty slot
+                            intakeConfirmCounter++;
+
+                            if (intakeConfirmCounter >= INTAKE_CONFIRM_THRESHOLD) {
+                                intake.setPower(0);
+                                currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
+                                intakeStep = 0;
+                                sequenceStartTime = System.currentTimeMillis();
+                                intakeConfirmCounter = 0;
+                            }
                         }
                         break;
                 }
@@ -394,9 +399,9 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                             double timeee = pidTimer.seconds();
                             pidTimer.reset();
                             double voltage = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
-                            double deriv = (err - lastError) / timeee;
+                            double deriv = (err - sLastError) / timeee;
                             double pow = (err * kP) + (deriv * kD);
-                            lastError = err;
+                            sLastError = err;
                             pow = Math.max(-0.5, Math.min(0.5, pow));
 
                             if (err > PositionToleranceDeg) {
@@ -1010,5 +1015,43 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
 
     }
+    /*private int getClosestOpenForwardSlot() {
+        double currentPos = getSpindexerAngleDeg();
+        int bestSlot = -1;
+        double minForwardDistance = 400;
+
+        for (int i = 0; i < intakeSlotPositions.length; i++) {
+
+            if (isSlotFull(i)) continue;  // skip filled slots
+
+            double distance = intakeSlotPositions[i] - currentPos;
+            if (distance < 0) distance += 360;
+
+            if (distance < minForwardDistance) {
+                minForwardDistance = distance;
+                bestSlot = i;
+            }
+        }
+
+        // If all are full, just return closest forward (fallback)
+        if (bestSlot == -1) {
+            return getClosestForwardSlot();
+        }
+
+        return bestSlot;
+    }
+    private boolean isSlotFull(int index) {
+        switch(index) {
+            case 0:
+                return slot0Detect();
+            case 1:
+                return slot1Detect();
+            case 2:
+                return slot2Detect();
+        }
+        return false;
+    }*/
+
+
 }
 
