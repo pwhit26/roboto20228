@@ -1,4 +1,5 @@
 package org.firstinspires.ftc.teamcode.LAVA;
+
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.hardware.limelightvision.LLResult;
@@ -7,32 +8,30 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.hardware.ColorRangeSensor;
-import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+
+import org.firstinspires.ftc.teamcode.PoseStorage;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.List;
 
-//RED APRILTAG LIMELIGHT
-//Unchanged
-//JULIANNA
-@TeleOp(group = "AAA", name ="LavaTele")
+@TeleOp
 public class lavaTele extends LinearOpMode {
     private Follower follower;
     private static final double MIN_COLOR_THRESHOLD = 0.5; // 50% of total area
     private boolean wasColorDetected = false;
-    private boolean intakeSequenceActive= false;
+    private boolean intakeSequenceActive = false;
     private boolean intakeSequenceComplete = true;
-    private int ballcount=0;
+    private int ballcount = 0;
     //private boolean intakeSlow=false;
-    private int intakeStep=0;
+    private int intakeStep = 0;
     private Limelight3A limelight;
     private int spinPos;
     private boolean on = true;
@@ -42,14 +41,14 @@ public class lavaTele extends LinearOpMode {
     long sequenceStartTime = 0;
     long popStartTime = 0;
     int popSequenceStep = 0;
-    int shootStep=0;
+    int shootStep = 0;
     boolean shootSequenceActive = false;
     boolean shootSequenceComplete = true;
     private final Pose startPose = new Pose(0, 0, 0);
     private RevColorSensorV3 colorBack, color0, color1, colorFront;
     private double txDeg, tyDeg;
     private double v;
-    private int initialPos=0;
+    private int initialPos = 0;
     long Id;
     boolean unstuckActive = false;
     long unstuckStartTime = 0;
@@ -59,6 +58,42 @@ public class lavaTele extends LinearOpMode {
     long shootStepStartTime = 0;
     boolean ballLatched = false;
     boolean readyForPopup = false;
+    private AnalogInput encoder;
+    static final int numIntakeSlots = 3;
+    int[] intakeSlotPositions = {110, 230, 355};
+    int[] shootSlotPositions = {65, 190, 305};
+    static final double kP = 0.0155; // Start small
+    static final double kD = 0.0008; // Helps prevent overshoot
+    static final double kI = 0.0;    // Usually not needed for a spindexer
+    double lastError = 0;
+    ElapsedTime pidTimer = new ElapsedTime();
+    double PositionToleranceDeg = 8;
+    static final double max_spin_power = 0.5;
+    double integral = 0;
+    int currentSlot = 0;
+    boolean spindexerMoving = false;
+    int currentShootSlot = 0;
+    private VoltageSensor batteryVoltageSensor;
+    // Add this variable at the top of your class with the others
+    private int emptySlotCounter = 0;
+    private static final int EMPTY_CONFIRM_THRESHOLD = 6; // How many loops to wait
+    boolean pastCheck;
+    private Follower poseUpdater;
+    private Follower drive;
+    private final Pose GOAL_POSE = new Pose(72, 36);
+    private double lastTurretAngleDeg = 0;
+    String[] scanResults = {"open", "open", "open"};
+    boolean needScan = true;
+    double sLastError = 0;
+    private int intakeConfirmCounter = 0;
+    private static final int INTAKE_CONFIRM_THRESHOLD = 4;
+    private boolean slot0Valid = false;
+    private boolean slot1Valid = false;
+    private boolean slot2Valid = false;
+    String targetColorMode = "all";
+    private boolean goShoot = false;
+    int ballPresentCounter = 0;
+    static final int BALL_PRESENT_THRESHOLD = 5;
 
 
 
@@ -68,6 +103,11 @@ public class lavaTele extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
+
+
+
+        // IMPORTANT: Start TeleOp with the ending position of Auto
+        //poseUpdater.setStartingPose(PoseStorage.lastPo se);
         //drive motor init
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
@@ -82,6 +122,10 @@ public class lavaTele extends LinearOpMode {
         backLeft.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
         backLeft.setDirection(DcMotorSimple.Direction.FORWARD);
 
+        encoder = hardwareMap.get(AnalogInput.class, "encoder");
+
+        batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
+
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
         // Follower after constants are set
@@ -89,22 +133,25 @@ public class lavaTele extends LinearOpMode {
         follower.setStartingPose(startPose);
 
         //other motor init
-        intake = hardwareMap.get(DcMotorEx.class, "intake");
+        intake = hardwareMap.get(DcMotorEx.class,"intake");
 
         turret = hardwareMap.get(DcMotorEx.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.FORWARD);
         turret.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         turret.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.FLOAT);
-        turret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.05);
+        turret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1);
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        turnTurret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1); // Put in actual numbers these are placeholders
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
         spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        //spindexer.setTargetPosition(0);
+        spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        //spindexer.setPower(0.3);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
-        //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
-        colorFront=hardwareMap.get(RevColorSensorV3.class, "colorFront");
+        color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+        colorFront = hardwareMap.get(RevColorSensorV3.class, "colorFront");
 
 
         //servo init
@@ -124,6 +171,7 @@ public class lavaTele extends LinearOpMode {
         }
 
         waitForStart();
+
         follower.startTeleopDrive();
         runtime.reset();
         while (opModeIsActive()) {
@@ -147,12 +195,10 @@ public class lavaTele extends LinearOpMode {
             frontRight.setPower(rightFrontPower);
             backRight.setPower(rightRearPower);
 
-            if (limelight!=null)
-            {
+            if (limelight != null) {
                 LLResult ll = limelight.getLatestResult();
                 telemetry.addData("Limelight", "Got result: %s", ll != null ? "Valid" : "Null");
                 LLResultTypes.FiducialResult targetTag = null;
-
 
                 if (ll != null) {
                     List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
@@ -167,25 +213,21 @@ public class lavaTele extends LinearOpMode {
                             break; // stop once we found red goal
                         }
                     }
-                    if (targetTag != null && Id == 24)
-                    {
+                    if (targetTag != null && Id == 24) {
                         boolean isValid = ll.isValid();
                         double tx = ll.getTx();
                         double ty = ll.getTy();
                         double ta = ll.getTa();
-                        txDeg=tx;
-                        tyDeg=ty;
+                        txDeg = tx;
+                        tyDeg = ty;
 
 
-                        double dist=calculateDistance(ty, tx);
+                        double dist = calculateDistance(ty, tx);
                         angleAdjust(tx, dist);
                         setTurretAngle(dist);
-                        if (gamepad1.b)
-                        {
+                        if (gamepad1.b) {
                             setTurretVelocity(dist); //not sure if i didnt fuck this up sorry
-                        }
-                        else
-                        {
+                        } else {
                             turret.setVelocity(800);
                         }
 
@@ -193,469 +235,297 @@ public class lavaTele extends LinearOpMode {
                         //telemetry.addData("AprilTag ID", tid);
                         telemetry.addData("TX/TY/TA", "%.2f / %.2f / %.2f", tx, ty, ta);
                         telemetry.addData("Distance from Apriltag/Angle 0/Angle1:", "%.2f / %.2f / %.2f", dist, angleTurret0.getPosition(), angleTurret1.getPosition());
-                    }
-                    else {
-                        if (gamepad1.b)
-                        {
+                    } else {
+                        if (gamepad1.b) {
                             turret.setVelocity(1500);
-                        }
-                        else {
+                        } else {
                             turret.setVelocity(800);
                         }
                     }
 
+
                 }
             }
 
-
-
-            //Shoot macro
-            // ================= SHOOTING SEQUENCE =================
-
-// Start shooting sequence
-            if (gamepad1.right_bumper && !shootingActive) {
-                shootingActive = true;
-                shootStep = 0;
-                shootStepStartTime = System.currentTimeMillis();
-                colorConfirmCount = 0;
-                ballLatched = false;
-                readyForPopup = false;
-            }
-
-// Default safety
-            if (!shootingActive && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.x && !gamepad1.y && !gamepad2.a && !gamepad2.b) {
-                spindexer.setPower(0);
-            }
-            // HARD CANCEL: release button aborts shooting
-            if (!gamepad1.right_bumper && shootingActive && shootStep == 0) {
-                shootingActive = false;
-                shootStep = 0;
-                spindexer.setPower(0);
-                popUp.setPosition(0);
-            }
-
-// Run sequence
-            if (shootingActive) {
-                long elapsed = System.currentTimeMillis() - shootStepStartTime;
-
-                switch (shootStep) {
-
-                    // ------------------------------------------------
-                    // STEP 0: Spin spindexer fast toward shooter
-                    // ------------------------------------------------
-                    case 0:
-                        spindexer.setPower(0.25);  // FAST FEED
-
-                        if (greenDetect() || purpleDetect()) {
-                            colorConfirmCount++;
-                        } else {
-                            colorConfirmCount = 0;
-                        }
-
-                        // Once color is confirmed, slow down
-                        if (colorConfirmCount >= COLOR_CONFIRM_THRESHOLD) {
-                            shootStep = 1;
-                            shootStepStartTime = System.currentTimeMillis();
-                        }
-                        break;
-
-                    // ------------------------------------------------
-                    // STEP 1: Slow crawl + latch detection
-                    // ------------------------------------------------
-                    case 1:
-                        spindexer.setPower(0.05); // CRAWL SPEED
-
-                        if (!ballLatched) {
-                            ballLatched = true;
-                            shootStepStartTime = System.currentTimeMillis();
-                        }
-
-                        // Micro-advance to center ball
-                        if (elapsed >= 20) {
-                            spindexer.setPower(0);
-                            shootStep = 2;
-                            shootStepStartTime = System.currentTimeMillis();
-                        }
-                        break;
-
-                    // ------------------------------------------------
-                    // STEP 2: Popup up (spindexer fully stopped)
-                    // ------------------------------------------------
-                    case 2:
-                        spindexer.setPower(0);
-                        popUp.setPosition(0.45); // POPUP UP
-
-                        if (elapsed >= 450) {
-                            shootStep = 3;
-                            shootStepStartTime = System.currentTimeMillis();
-                        }
-                        break;
-
-                    // ------------------------------------------------
-                    // STEP 3: Popup down & reset
-                    // ------------------------------------------------
-                    case 3:
-                        popUp.setPosition(0.0); // POPUP DOWN
-
-                        if (elapsed >= 200) {
-                            shootingActive = false;
-                            shootStep = 0;
-                            colorConfirmCount = 0;
-                            ballLatched = false;
-                        }
-                        break;
-                }
-            }
-
-
-            else if (gamepad1.dpad_left) //Just green
-            {
-                spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
-                telemetry.addData("Shoot Order:", "Green");
-                switch (shootStep)
-                {
-                    case 0:
-                        boolean isGreenDetected = greenDetect();
-                        if (isGreenDetected && !wasColorDetected)
-                        {
-                            spindexer.setPower(0);
-                            wasColorDetected = true;
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        else if (!isGreenDetected)
-                        {
-                            spindexer.setPower(0.25);
-                            wasColorDetected=false;
-                        }
-                        else if (elapsedTime >= 2000) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 1:
-                        if (elapsedTime>=200)
-                        {
-                            popUp.setPosition(0.45); //ALL THE WAY UP
-                            ballcount--;
-                        }
-
-                        if (elapsedTime >= 450) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 2:
-                        popUp.setPosition(0);
-                        //turret.setPower(0);
-                        if (elapsedTime >= 500) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 3:
-                        shootSequenceComplete = true;
-                        shootSequenceActive = false;
-                        sequenceStartTime = 0;
-                        shootStep = 0;
-                        break;
-                }
-            }
-            else if (gamepad1.dpad_right) //just purple
-            {
-                spindexer.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
-                telemetry.addData("Shoot Order:", "Purple");
-                switch (shootStep)
-                {
-                    case 0:
-                        boolean isPurpleDetected = purpleDetect();
-                        if (isPurpleDetected && !wasColorDetected)
-                        {
-                            spindexer.setPower(0);
-                            wasColorDetected = true;
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        else if (!isPurpleDetected)
-                        {
-                            spindexer.setPower(0.25);
-                            wasColorDetected=false;
-                        }
-                        else if (elapsedTime >= 2000) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 1:
-                        if (elapsedTime>=200)
-                        {
-                            popUp.setPosition(0.45); //ALL THE WAY UP 0.51
-                        }
-
-                        if (elapsedTime >= 450) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 2:
-                        popUp.setPosition(0);
-                        //turret.setPower(0);
-                        if (elapsedTime >= 500) {
-                            shootStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 3:
-                        shootSequenceComplete = true;
-                        shootSequenceActive = false;
-                        sequenceStartTime = 0;
-                        shootStep = 0;
-                        break;
-                }
-
-            }
-            else if (!gamepad1.right_bumper && !gamepad1.y && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad2.b && !gamepad1.x && !gamepad1.dpad_up && !gamepad2.a){
-                wasColorDetected = false;
-                // Stop spindexer when bumper is released
-                spindexer.setPower(0);
-                shootStep=0;
-            }
-            else {
-                wasColorDetected = false;
-            }
-
-
-
-            //Turret Power
-            if (gamepad1.b && (limelight==null || limelight.getLatestResult()==null))
-            {
-                turret.setPower(0.6);
-                telemetry.addData("turret power:", turret.getPower());
-                //telemetry.update();
-            }
-            else {
-                turret.setPower(0);
-            }
-
-
-            //intake
-            if (gamepad1.y) {
-                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
-                //ballcount=0;
-                switch (intakeStep)
-                {
-                    case 0:
-                        intake.setPower(0);
-                        spindexer.setPower(0.1775);
-                        if (elapsedTime >= 150) {
-                            intakeStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 1:
-                        boolean intakeGo = intakeTimingDetection();
-                        if (intakeGo && !isSpotTaken())
-                        {
-                            intake.setPower(0.63);
-                            spindexer.setPower(0);
-                            telemetry.addData("Intake Power", intake.getPower());
-                            //telemetry.update();
-                        }
-                        else if (isSpotTaken())
-                        {
-                            intakeStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        /*
-                        else if (elapsedTime >= 400) {
-                            intakeStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                            }
-
-                         */
-                        break;
-
-                    case 2:
-                        if (isTargetColorDetected())
-                        {
-                            ballcount++;
-
-                        }
-                        telemetry.addData("Intake Power", intake.getPower());
-                        telemetry.addData("Ball Count:", ballcount);
-                        //telemetry.update();
-                        spindexer.setPower(0.181);
-                        intake.setPower(0);
-                        intakeStep++;
-                        sequenceStartTime = System.currentTimeMillis();
-                        break;
-                    case 3:
-                        intakeSequenceComplete = true;
-                        intakeSequenceActive = false;
-                        sequenceStartTime = 0;
-                        intakeStep = 0;
-                        break;
-                }}
-
-
-
-
-
-            /*if (gamepad1.y)
-            {
-                long elapsedTime = System.currentTimeMillis() - sequenceStartTime;
-                switch (intakeStep)
-                {
-                    case 0:
-                        spindexer.setVelocity(400);
-                        intake.setPower(0);
-                        if (elapsedTime>=150)
-                        {
-                            intakeStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 1:
-                        if (intakeTimingDetection() && !isSpotTaken())
-                        {
-                            spindexer.setVelocity(0);
-                            intake.setPower(0.6);
-                            if (elapsedTime>=800)
-                            {
-                                intakeStep++;
-                                sequenceStartTime = System.currentTimeMillis();
-                            }
-                        }
-                        else if (isSpotTaken())
-                        {
-                            intakeStep++;
-                        }
-                        break;
-                    case 2:
-                        intake.setPower(0);
-                        spindexer.setVelocity(400);
-                        if (elapsedTime>=150)
-                        {
-                            intakeStep++;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                    case 3:
-                        sequenceStartTime = 0;
-                        intakeStep = 0;
-                        break;
-                }
-
-
-
-
-            */
-            else if (gamepad1.a && !gamepad1.left_bumper)
-            {
-                intake.setPower(-0.6);
-            }
-            else if (gamepad1.left_bumper)
-            {
-                intake.setPower(0.6);
-            }
-            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a && !gamepad1.left_bumper && !gamepad1.dpad_up && !gamepad1.x){
-                intake.setPower(0);
-                spindexer.setPower(0);
-            }
-            else {
-                intake.setPower(0);
-            }
-            //spindexer.setTargetPosition(initialPos);
-            //yLast = gamepad1.y;
-            if (gamepad1.x && !unstuckActive) {
-                unstuckActive = true;
-                unstuckStartTime = System.currentTimeMillis();
-            }
-
-            if (unstuckActive) {
-                spindexer.setPower(0.2);
-                if (System.currentTimeMillis() - unstuckStartTime > 250) {
-                    unstuckActive = false;
-                    spindexer.setPower(0);
-                }
-            }
-
-            if (gamepad2.y)
-            {
-                intakeTimingDetection();
-            }
-            if (gamepad2.x)
-            {
-                isSpotTaken();
-            }
-            if ((gamepad2.a || gamepad1.dpad_up) && !popSequenceActive) {
-                popSequenceActive = true;
-                popSequenceStep = 0;
-                popStartTime = System.currentTimeMillis();
-            }
-            if (popSequenceActive) {
-                long elapsedTime = System.currentTimeMillis() - popStartTime;
-
-                switch (popSequenceStep) {
-                    case 0:
-                        spindexer.setPower(-0.2);
-                        popUp.setPosition(0.45);
-                        telemetry.addLine("Case 0");
-                        if (elapsedTime >= 500) {
-                            popSequenceStep++;
-                            popStartTime = System.currentTimeMillis();
-                        }
-                        break;
-
-                    case 1:
-                        spindexer.setPower(0);
-                        telemetry.addLine("Case 1");
-                        if (elapsedTime >= 600) {
-                            popSequenceStep++;
-                            popStartTime = System.currentTimeMillis();
-                        }
-                        break;
-
-                    case 2:
-                        popUp.setPosition(0);
-                        telemetry.addLine("Case 2");
-                        if (elapsedTime >= 200) {
-                            popSequenceStep++;
-                            popStartTime = System.currentTimeMillis();
-                        }
-                        break;
-
-                    case 3:
-                        telemetry.addLine("Case 3");
-                        popSequenceActive = false;
-                        popSequenceStep = 0;
-                        break;
-                }
-            }
             if (gamepad2.left_bumper)
             {
-                turnTurret.setPower(-0.18);
+                turnTurret.setPower(-0.3);
             }
             else if (gamepad2.right_bumper)
             {
-                turnTurret.setPower(0.18);
+                turnTurret.setPower(0.3);
             }
             else {
-                turnTurret.setPower(0);
+
             }
-            if (gamepad2.b && !gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a && !gamepad1.left_bumper && !gamepad1.dpad_up)
+
+
+            //Intake Macro
+            // --- Inside your while(opModeIsActive) loop ---
+
+            if (gamepad1.y) {
+                double currentPos = getSpindexerAngleDeg();
+                double targetPos = intakeSlotPositions[currentSlot];
+                long stepTime = System.currentTimeMillis() - sequenceStartTime;
+
+
+                // 1. Calculate Forward Distance (to ensure it only spins one way)
+                double error = targetPos - currentPos;
+                if (error < 0) {
+                    error += 360; // Force the motor to find the target by spinning forward
+                }
+
+                switch (intakeStep) {
+                    case -1: // INITIAL DECISION (Lazy Logic)
+                        currentSlot = getClosestForwardSlot(); // Use the helper method
+                        intakeStep = 0;
+                        sequenceStartTime = System.currentTimeMillis();
+                        lastError = 0;
+                        break;
+                    case 0: // ALIGNING
+                        // 2. PID Calculation
+                        double dt = pidTimer.seconds();
+                        pidTimer.reset();
+
+                        // 1. Get current voltage
+                        double currentVoltage = batteryVoltageSensor.getVoltage();
+
+// 2. Calculate the compensation factor (Target 12V / Current)
+// We use Math.max to prevent division by zero just in case
+                        double voltageComp = 12.0 / Math.max(currentVoltage, 1.0);
+
+                        double derivative = (error - lastError) / dt;
+                        double power = (error * kP) + (derivative * kD);
+                        lastError = error;
+
+                        // Cap the power so it doesn't go crazy
+                        power = Math.max(-0.5, Math.min(0.5, power));
+                        double minPower = 0.15; // Minimum power to overcome friction
+
+                        if (error > PositionToleranceDeg) {
+                            double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
+                            spindexer.setPower(finalPower * voltageComp);
+                            sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
+                        } else {
+                            spindexer.setPower(0);
+                            // Wait for settle before turning on the intake motor
+                            if (stepTime >= 40) {
+                                intakeStep = 1;
+                                sequenceStartTime = System.currentTimeMillis();
+                            }
+                        }
+                        break;
+                    case 1:
+
+                        boolean detected = isSpotTaken();
+
+                        // Always run intake while checking
+                        intake.setPower(0.85);
+
+                        if (detected) {
+                            ballPresentCounter++;
+                        } else {
+                            ballPresentCounter = 0;
+                        }
+
+                        // Ball confirmed stable in slot
+                        if (ballPresentCounter >= BALL_PRESENT_THRESHOLD) {
+
+                            intake.setPower(0.2);
+                        }
+                        if (ballPresentCounter >= BALL_PRESENT_THRESHOLD + 3) {
+                            intake.setPower(0);
+
+                            currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
+
+                            intakeStep = 0;
+                            sequenceStartTime = System.currentTimeMillis();
+
+                            ballPresentCounter = 0;
+                        }
+
+
+                        break;
+                }
+            } else if (gamepad1.left_bumper && !gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right)
             {
-                spindexer.setPower(-0.2);
+                intake.setPower(0.8);
             }
-            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.a && !gamepad1.left_bumper && !gamepad1.dpad_up)
-            {
+            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.left_bumper){
+                // Reset logic when button is released
                 spindexer.setPower(0);
+                intake.setPower(0);
+                intakeStep = -1;
+                lastError = 0;
+            }
+
+            telemetry.addData("intake", intakeStep);
+            telemetry.update();
+
+            if (gamepad1.right_bumper)
+            {
+                targetColorMode = "all";
+                goShoot = true;
+
+            }
+            else if (gamepad1.dpad_left)
+            {
+                targetColorMode = "green";
+                goShoot = true;
+            }
+            else if (gamepad1.dpad_right)
+            {
+                targetColorMode = "purple";
+                goShoot = true;
+            }
+            else {
+                goShoot = false;
             }
 
 
-            telemetry.update();
+            if (goShoot)
+            {
+                double currentSPos = getSpindexerAngleDeg();
+                long stepTime = System.currentTimeMillis() - sequenceStartTime;
+
+                switch (shootStep) {
+                    case -1: // NEW: INITIAL DECISION
+                        currentShootSlot = getClosestShootSlot();
+                        shootStep = 0;
+                        sequenceStartTime = System.currentTimeMillis();
+                        break;
+
+                    case 0: // ALIGNING
+                        double targetSPos = shootSlotPositions[currentShootSlot];
+                        double error = targetSPos - currentSPos;
+                        if (error < 0) error += 360;
+
+                        double dt = pidTimer.seconds();
+                        pidTimer.reset();
+                        double voltageComp = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
+                        double derivative = (error - lastError) / dt;
+                        double power = (error * kP) + (derivative * kD);
+                        lastError = error;
+
+                        power = Math.max(-0.5, Math.min(0.5, power));
+
+                        if (needScan)
+                        {
+                            if (error > PositionToleranceDeg) {
+                                spindexer.setPower(power * voltageComp);
+                                sequenceStartTime = System.currentTimeMillis();
+                            } else {
+                                spindexer.setPower(0);
+                                scan();
+                                if (stepTime >= 50) {
+                                    shootStep = 1;
+                                    sequenceStartTime = System.currentTimeMillis();
+                                    emptySlotCounter = 0;
+                                }
+                            }
+                        }
+                        else {
+                            shootStep = 1;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+
+
+                        break;
+
+                    case 1: // CHECK FOR BALL
+                        slot0Valid = false;
+                        slot1Valid = false;
+                        slot2Valid = false;
+
+                        if (targetColorMode.equals("all"))
+                        {
+                            slot2Valid = scanResults[2].equals("green") || scanResults[2].equals("purple");
+                            slot0Valid = scanResults[0].equals("green") || scanResults[0].equals("purple");
+                            slot1Valid = scanResults[1].equals("green") || scanResults[1].equals("purple");
+                        }
+                        else {
+                            slot2Valid = scanResults[2].equals(targetColorMode);
+                            slot0Valid = scanResults[0].equals(targetColorMode);
+                            slot1Valid = scanResults[1].equals(targetColorMode);
+                        }
+                        double tPos = -1;
+                        if (slot2Valid)
+                        {
+
+                            tPos = shootSlotPositions[currentShootSlot];
+                        }
+                        else if (slot0Valid)
+                        {
+                            tPos = shootSlotPositions[(currentShootSlot + 1) % shootSlotPositions.length];
+
+                        }
+                        else if (slot1Valid)
+                        {
+                            tPos = shootSlotPositions[(currentShootSlot + 2) % shootSlotPositions.length];
+                        }
+                        else {
+                            //all slots open
+                            shootStep = 0;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        if (tPos !=- 1)
+                        {
+                            double err = tPos - currentSPos;
+                            if (err < 0) err += 360;
+
+                            double timeee = pidTimer.seconds();
+                            pidTimer.reset();
+                            double voltage = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
+                            double deriv = (err - sLastError) / timeee;
+                            double pow = (err * kP) + (deriv * kD);
+                            sLastError = err;
+                            pow = Math.max(-0.5, Math.min(0.5, pow));
+
+                            if (err > PositionToleranceDeg) {
+                                spindexer.setPower(pow * voltage);
+                                sequenceStartTime = System.currentTimeMillis();
+                            } else {
+                                spindexer.setPower(0);
+                                if (stepTime >= 40) { // Wait for settle
+                                    shootStep = 2;
+                                    sequenceStartTime = System.currentTimeMillis();
+                                    emptySlotCounter = 0;
+                                }
+                            }
+                        }
+                        break;
+
+                    case 2: // POP UP
+                        popUp.setPosition(0.4);
+                        if (stepTime >= 300) {
+                            shootStep = 3;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+
+                    case 3: // RETRACT & PREPARE NEXT
+                        needScan = false;
+                        popUp.setPosition(0);
+                        // START MOVING TO NEXT SLOT WHILE RETRACTING
+                        if (stepTime >= 150) {
+                            currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
+                            shootStep = 0;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+                        break;
+                }
+            }
+            else if (!gamepad1.right_bumper && !gamepad1.y && !gamepad1.dpad_left && !gamepad1.dpad_right){
+                spindexer.setPower(0);
+                shootStep = -1;
+                lastError = 0;
+                popUp.setPosition(0);
+                needScan = true;
+            }
+
+
+
+
 
 
 
@@ -667,14 +537,14 @@ public class lavaTele extends LinearOpMode {
         int green = color0.green();
         int blue = color0.blue();
         NormalizedRGBA colors = color0.getNormalizedColors();
-        if ((colors.blue)> colors.green && colors.blue>0.0017)
+        if ((colors.blue)> colors.green && colors.blue>0.0015)
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
             telemetry.update();
             return true;
 
-        } else if(colors.green>(colors.blue) && colors.green>0.00195) {
+        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -704,26 +574,27 @@ public class lavaTele extends LinearOpMode {
     {
         if (Id == 24)
         {
-            if (dist >2.2 && dist <2.9)
+            if (dist > 2.2 && dist<2.9)
             {
-                if (tx>3)
+                if (tx>4)
                 {
                     turnTurret.setPower(0.173);
                 }
-                else if (tx<-3)
+                else if (tx<-2)
                 {
                     turnTurret.setPower(-0.173);
                 }
-                else {
+                else
+                {
                     turnTurret.setPower(0);
                 }
             }
             else {
-                if (tx>2)
+                if (tx>5)
                 {
                     turnTurret.setPower(0.173);
                 }
-                else if (tx<-4)
+                else if (tx<-1)
                 {
                     turnTurret.setPower(-0.173);
                 }
@@ -779,7 +650,7 @@ public class lavaTele extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1367.6*(Math.pow(dist, 0.19183)) + 30;//0.173 original
+        double velocity = 1367.6*(Math.pow(dist, 0.19183)) + 70;//0.173 original
         if (dist<=1.2)
         {
             velocity = velocity +35;
@@ -797,17 +668,18 @@ public class lavaTele extends LinearOpMode {
         {
             velocity = velocity -50;
         }
-        if (dist >=2.2 && dist<2.5)
+        if (dist >=2.2 && dist<2.9)
         {
-            velocity = velocity - 75;
-        }
-        if (dist >=2.5 && dist<2.9)
-        {
-            velocity = velocity + 5;
+            velocity = velocity + 15;
         }
         if (dist>3)
         {
-            velocity = velocity - 20;
+            velocity = velocity - 5;
+        }
+
+        if (gamepad1.right_bumper)
+        {
+            velocity = velocity + 75;
         }
 
 
@@ -840,7 +712,8 @@ public class lavaTele extends LinearOpMode {
     private boolean greenDetect()
     {
         NormalizedRGBA colors = colorBack.getNormalizedColors();
-        if(colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0028) {
+
+        if((colors.green>(colors.blue) && colors.green>colors.red && colors.green>0.0013)) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -856,7 +729,8 @@ public class lavaTele extends LinearOpMode {
     {
         NormalizedRGBA colors = colorBack.getNormalizedColors();
 
-        if ((colors.blue)> colors.green && colors.blue>0.0028)
+
+        if (((colors.blue)> colors.green && colors.blue>0.001))
         {
             telemetry.addData("Color seen:", "purple");
             telemetry.addData("Color seen:", colors.blue);
@@ -927,26 +801,187 @@ public class lavaTele extends LinearOpMode {
         spindexer.setPower(0.2);
 
     }
-    private void setInitialPos()
+    // Updated Error function to handle the 360-degree wrap
+    double angleError(double target, double current) {
+        double error = target - current;
+        while (error > 180) error -= 360;
+        while (error < -180) error += 360;
+        return error;
+    }
+
+    // Update your sensor reading to be more stable
+    double getSpindexerAngleDeg() {
+        // REV Analog encoder stays between 0 and 3.3V usually
+        double voltage = encoder.getVoltage();
+        double maxVoltage = 3.3; // Check if your bot is 3.2 or 3.3
+        double degrees = (voltage / maxVoltage) * 360.0;
+
+        // Apply your specific mechanical offset
+        double offset = -123.4;
+        double finalAngle = (degrees + offset) % 360;
+        if (finalAngle < 0) finalAngle += 360;
+
+        return finalAngle;
+    }
+    private int getClosestShootSlot() {
+        double currentPos = getSpindexerAngleDeg();
+        int bestSlot = 0;
+        double minForwardDistance = 400;
+
+        for (int i = 0; i < shootSlotPositions.length; i++) {
+            double distance = shootSlotPositions[i] - currentPos;
+            if (distance < 0) distance += 360; // Forward only
+
+            if (distance < minForwardDistance) {
+                minForwardDistance = distance;
+                bestSlot = i;
+            }
+        }
+        return bestSlot;
+    }
+    private int getClosestForwardSlot() {
+        double currentPos = getSpindexerAngleDeg();
+        int bestSlot = currentSlot;
+        double minForwardDistance = 400; // Larger than 360
+
+        for (int i = 0; i < intakeSlotPositions.length; i++) {
+            double distance = intakeSlotPositions[i] - currentPos;
+
+            // If the distance is negative, it means the slot is "behind" us.
+            // We add 360 to find the distance to reach it by spinning forward.
+            if (distance < 0) {
+                distance += 360;
+            }
+
+            if (distance < minForwardDistance) {
+                minForwardDistance = distance;
+                bestSlot = i;
+            }
+        }
+        return bestSlot;
+    }
+    private double alignTurret(double x, double y, double heading, Pose target)
     {
-        spindexer.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        spindexer.setPower(0.2);
-        if (intakeTimingDetection())
+        double dx = target.getX() - x;
+        double dy = target.getY() - y;
+        double angleToGoal = Math.toDegrees(Math.atan2(dy, dx));
+        double turretAngle = -(angleToGoal - heading);
+
+        while (turretAngle>180) turretAngle -=360;
+        while (turretAngle<-180) turretAngle +=360;
+
+        double diff = turretAngle - lastTurretAngleDeg;
+        if (diff > 90)
         {
-            spindexer.setPower(0);
+            turretAngle -=360;
+        }
+        else if (diff < -90)
+        {
+            turretAngle +=360;
+        }
+
+        while (turretAngle>180) turretAngle -=360;
+        while (turretAngle<-180) turretAngle +=360;
+
+        lastTurretAngleDeg = turretAngle;
+        return turretAngle;
+    }
+    public void spinnyTurretAngleThingy(double turretAngle)
+    {
+        if (turretAngle > 4)
+        {
+            turnTurret.setVelocity(900);
+        }
+        else if (turretAngle < -2)
+        {
+            turnTurret.setVelocity(-900);
         }
     }
-    private void hack()
+    public void scan()
     {
-        if (!greenDetect() && !purpleDetect() && popUp.getPosition() != 0.45)
-        {
-            spindexer.setPower(-0.15);
-            popUp.setPosition(0.45);
+        NormalizedRGBA in2Pos = colorBack.getNormalizedColors();
+        NormalizedRGBA in0Pos = color0.getNormalizedColors();
+        NormalizedRGBA in1Pos = color1.getNormalizedColors();
 
+        if (in0Pos.blue > 0.001 && in0Pos.blue > in0Pos.green)
+        {
+            scanResults[0] = "purple";
+        }
+        else if (in0Pos.green>0.0013)
+        {
+            scanResults[0] = "green";
         }
         else {
-            spindexer.setPower(0);
-            popUp.setPosition(0);
-        }//hi
+            scanResults[0] = "open";
+        }
+
+        if (in1Pos.blue > 0.001 && in1Pos.blue > in1Pos.green)
+        {
+            scanResults[1] = "purple";
+        }
+        else if (in1Pos.green > 0.0013)
+        {
+            scanResults[1] = "green";
+        }
+        else {
+            scanResults[1] = "open";
+        }
+
+        if (in2Pos.blue > 0.0012 && in2Pos.blue > in2Pos.green)
+        {
+            scanResults[2] = "purple";
+        }
+        else if (in2Pos.green > 0.0013)
+        {
+            scanResults[2] = "green";
+        }
+        else {
+            scanResults[2] = "open";
+        }
+
+
+        telemetry.addData("scan results: ",scanResults[0] + ", " + scanResults[1] + ", " + scanResults[2]);
+        telemetry.update();
+
+
     }
+    /*private int getClosestOpenForwardSlot() {
+        double currentPos = getSpindexerAngleDeg();
+        int bestSlot = -1;
+        double minForwardDistance = 400;
+
+        for (int i = 0; i < intakeSlotPositions.length; i++) {
+
+            if (isSlotFull(i)) continue;  // skip filled slots
+
+            double distance = intakeSlotPositions[i] - currentPos;
+            if (distance < 0) distance += 360;
+
+            if (distance < minForwardDistance) {
+                minForwardDistance = distance;
+                bestSlot = i;
+            }
+        }
+
+        // If all are full, just return closest forward (fallback)
+        if (bestSlot == -1) {
+            return getClosestForwardSlot();
+        }
+
+        return bestSlot;
+    }
+    private boolean isSlotFull(int index) {
+        switch(index) {
+            case 0:
+                return slot0Detect();
+            case 1:
+                return slot1Detect();
+            case 2:
+                return slot2Detect();
+        }
+        return false;
+    }*/
+
+
 }
+

@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.ICE;
+package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
@@ -23,7 +23,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import java.util.List;
 
 @TeleOp
-public class icyTele extends LinearOpMode {
+public class NewShootingTest extends LinearOpMode {
     private Follower follower;
     private static final double MIN_COLOR_THRESHOLD = 0.5; // 50% of total area
     private boolean wasColorDetected = false;
@@ -92,8 +92,6 @@ public class icyTele extends LinearOpMode {
     private boolean slot2Valid = false;
     String targetColorMode = "all";
     private boolean goShoot = false;
-    int ballPresentCounter = 0;
-    static final int BALL_PRESENT_THRESHOLD = 5;
 
 
 
@@ -247,18 +245,6 @@ public class icyTele extends LinearOpMode {
                 }
             }
 
-            if (gamepad2.left_bumper)
-            {
-                turnTurret.setPower(-0.3);
-            }
-            else if (gamepad2.right_bumper)
-            {
-                turnTurret.setPower(0.3);
-            }
-            else {
-
-            }
-
 
             //Intake Macro
             // --- Inside your while(opModeIsActive) loop ---
@@ -316,42 +302,23 @@ public class icyTele extends LinearOpMode {
                         }
                         break;
                     case 1:
-
-                        boolean detected = isSpotTaken();
-
-                        // Always run intake while checking
-                        intake.setPower(0.85);
-
-                        if (detected) {
-                            ballPresentCounter++;
+                        if (!isSpotTaken()) {
+                            intake.setPower(0.85);
+                            intakeConfirmCounter = 0;
                         } else {
-                            ballPresentCounter = 0;
+                            intakeConfirmCounter++;
+
+                            if (intakeConfirmCounter >= INTAKE_CONFIRM_THRESHOLD) {
+                                intake.setPower(0);
+                                currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
+                                intakeStep = 0;
+                                sequenceStartTime = System.currentTimeMillis();
+                                intakeConfirmCounter = 0;
+                            }
                         }
-
-                        // Ball confirmed stable in slot
-                        if (ballPresentCounter >= BALL_PRESENT_THRESHOLD) {
-
-                            intake.setPower(0.2);
-                        }
-                        if (ballPresentCounter >= BALL_PRESENT_THRESHOLD + 3) {
-                            intake.setPower(0);
-
-                            currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
-
-                            intakeStep = 0;
-                            sequenceStartTime = System.currentTimeMillis();
-
-                            ballPresentCounter = 0;
-                        }
-
-
                         break;
                 }
-            } else if (gamepad1.left_bumper && !gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right)
-            {
-                intake.setPower(0.8);
-            }
-            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.left_bumper){
+            } else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right){
                 // Reset logic when button is released
                 spindexer.setPower(0);
                 intake.setPower(0);
@@ -649,7 +616,7 @@ public class icyTele extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1367.6*(Math.pow(dist, 0.19183)) + 70;//0.173 original
+        double velocity = 1367.6*(Math.pow(dist, 0.19183)) + 30;//0.173 original
         if (dist<=1.2)
         {
             velocity = velocity +35;
@@ -669,7 +636,7 @@ public class icyTele extends LinearOpMode {
         }
         if (dist >=2.2 && dist<2.9)
         {
-            velocity = velocity + 15;
+            velocity = velocity + 5;
         }
         if (dist>3)
         {

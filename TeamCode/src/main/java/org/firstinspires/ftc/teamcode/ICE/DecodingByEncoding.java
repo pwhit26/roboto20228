@@ -17,6 +17,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.teamcode.PoseStorage;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.List;
@@ -62,7 +63,7 @@ public class DecodingByEncoding extends LinearOpMode {
     int[] intakeSlotPositions = {110, 230, 355};
     int[] shootSlotPositions = {65, 190, 305};
     static final double kP = 0.0155; // Start small
-    static final double kD = 0.0006; // Helps prevent overshoot
+    static final double kD = 0.0008; // Helps prevent overshoot
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
@@ -81,6 +82,21 @@ public class DecodingByEncoding extends LinearOpMode {
     private Follower drive;
     private final Pose GOAL_POSE = new Pose(72, 36);
     private double lastTurretAngleDeg = 0;
+    String[] scanResults = {"open", "open", "open"};
+    boolean needScan = true;
+    double sLastError = 0;
+    private int intakeConfirmCounter = 0;
+    private static final int INTAKE_CONFIRM_THRESHOLD = 4;
+    private boolean slot0Valid = false;
+    private boolean slot1Valid = false;
+    private boolean slot2Valid = false;
+    String targetColorMode = "all";
+    private boolean goShoot = false;
+    int ballLostCounter = 0;
+    static final int BALL_LOST_THRESHOLD = 6;
+    int ballPresentCounter = 0;
+    static final int BALL_PRESENT_THRESHOLD = 5;
+
 
 
     Servo angleTurret0, angleTurret1, popUp;
@@ -93,7 +109,7 @@ public class DecodingByEncoding extends LinearOpMode {
 
 
         // IMPORTANT: Start TeleOp with the ending position of Auto
-        //poseUpdater.setStartingPose(PoseStorage.lastPose);
+        //poseUpdater.setStartingPose(PoseStorage.lastPo se);
         //drive motor init
         frontRight = hardwareMap.get(DcMotorEx.class, "rightFront");
         frontRight.setZeroPowerBehavior(DcMotorEx.ZeroPowerBehavior.BRAKE);
@@ -136,7 +152,7 @@ public class DecodingByEncoding extends LinearOpMode {
         //spindexer.setPower(0.3);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
-        //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+        color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
         colorFront = hardwareMap.get(RevColorSensorV3.class, "colorFront");
 
 
@@ -277,8 +293,8 @@ public class DecodingByEncoding extends LinearOpMode {
                         double minPower = 0.15; // Minimum power to overcome friction
 
                         if (error > PositionToleranceDeg) {
-                            double finalPower = Math.max(power, minPower);
-                            spindexer.setPower(power * voltageComp);
+                            double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
+                            spindexer.setPower(finalPower * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
@@ -289,19 +305,43 @@ public class DecodingByEncoding extends LinearOpMode {
                             }
                         }
                         break;
+                    case 1:
 
-                    case 1: // INTAKING
-                        if (!isSpotTaken()) {
-                            intake.setPower(0.85);
+                        boolean detected = isSpotTaken();
+
+                        // Always run intake while checking
+                        intake.setPower(0.85);
+
+                        if (detected) {
+                            ballPresentCounter++;
                         } else {
-                            // Ball detected! Stop and move to next slot
-                            intake.setPower(0);
-                            currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
-                            intakeStep = 0; // Loop back to align the next empty slot
+                            ballPresentCounter = 0;
                         }
+
+                        // Ball confirmed stable in slot
+                        if (ballPresentCounter >= BALL_PRESENT_THRESHOLD) {
+
+                            intake.setPower(0.2);
+                        }
+                        if (ballPresentCounter >= BALL_PRESENT_THRESHOLD + 3) {
+                            intake.setPower(0);
+
+                            currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
+
+                            intakeStep = 0;
+                            sequenceStartTime = System.currentTimeMillis();
+
+                            ballPresentCounter = 0;
+                        }
+
+
                         break;
                 }
-            } else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right){
+            } else if (gamepad1.left_bumper && !gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right)
+            {
+                intake.setPower(0.8);
+            }
+            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.left_bumper){
                 // Reset logic when button is released
                 spindexer.setPower(0);
                 intake.setPower(0);
@@ -311,7 +351,29 @@ public class DecodingByEncoding extends LinearOpMode {
             telemetry.addData("intake", intakeStep);
             telemetry.update();
 
-            if (gamepad1.right_bumper) { // general shoot
+            if (gamepad1.right_bumper)
+            {
+                targetColorMode = "all";
+                goShoot = true;
+
+            }
+            else if (gamepad1.dpad_left)
+            {
+                targetColorMode = "green";
+                goShoot = true;
+            }
+            else if (gamepad1.dpad_right)
+            {
+                targetColorMode = "purple";
+                goShoot = true;
+            }
+            else {
+                goShoot = false;
+            }
+
+
+            if (goShoot)
+            {
                 double currentSPos = getSpindexerAngleDeg();
                 long stepTime = System.currentTimeMillis() - sequenceStartTime;
 
@@ -336,106 +398,88 @@ public class DecodingByEncoding extends LinearOpMode {
 
                         power = Math.max(-0.5, Math.min(0.5, power));
 
-                        if (error > PositionToleranceDeg) {
-                            spindexer.setPower(power * voltageComp);
-                            sequenceStartTime = System.currentTimeMillis();
-                        } else {
-                            spindexer.setPower(0);
-                            if (stepTime >= 70) { // Wait for settle
-                                shootStep = 1;
+                        if (needScan)
+                        {
+                            if (error > PositionToleranceDeg) {
+                                spindexer.setPower(power * voltageComp);
                                 sequenceStartTime = System.currentTimeMillis();
-                                emptySlotCounter = 0;
+                            } else {
+                                spindexer.setPower(0);
+                                scan();
+                                if (stepTime >= 50) {
+                                    shootStep = 1;
+                                    sequenceStartTime = System.currentTimeMillis();
+                                    emptySlotCounter = 0;
+                                }
                             }
                         }
+                        else {
+                            shootStep = 1;
+                            sequenceStartTime = System.currentTimeMillis();
+                        }
+
+
                         break;
 
                     case 1: // CHECK FOR BALL
-                        // If we see color, IMMEDIATELY pop
-                        if (greenDetect() || purpleDetect() || isTargetColorDetected()) {
-                            shootStep = 2;
-                            sequenceStartTime = System.currentTimeMillis();
-                        } else {
-                            // Wait for the EMPTY_CONFIRM_THRESHOLD before giving up
-                            emptySlotCounter++;
-                            if (emptySlotCounter >= EMPTY_CONFIRM_THRESHOLD) {
-                                // Go to NEXT slot in order
-                                currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
-                                shootStep = 0;
-                                sequenceStartTime = System.currentTimeMillis();
-                            }
-                        }
-                        break;
+                        slot0Valid = false;
+                        slot1Valid = false;
+                        slot2Valid = false;
 
-                    case 2: // POP UP
-                        popUp.setPosition(0.4);
-                        if (stepTime >= 300) {
-                            shootStep = 3;
-                            sequenceStartTime = System.currentTimeMillis();
+                        if (targetColorMode.equals("all"))
+                        {
+                            slot2Valid = scanResults[2].equals("green") || scanResults[2].equals("purple");
+                            slot0Valid = scanResults[0].equals("green") || scanResults[0].equals("purple");
+                            slot1Valid = scanResults[1].equals("green") || scanResults[1].equals("purple");
                         }
-                        break;
+                        else {
+                            slot2Valid = scanResults[2].equals(targetColorMode);
+                            slot0Valid = scanResults[0].equals(targetColorMode);
+                            slot1Valid = scanResults[1].equals(targetColorMode);
+                        }
+                        double tPos = -1;
+                        if (slot2Valid)
+                        {
 
-                    case 3: // RETRACT & PREPARE NEXT
-                        popUp.setPosition(0);
-                        // START MOVING TO NEXT SLOT WHILE RETRACTING
-                        if (stepTime >= 150) {
-                            currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
+                            tPos = shootSlotPositions[currentShootSlot];
+                        }
+                        else if (slot0Valid)
+                        {
+                            tPos = shootSlotPositions[(currentShootSlot + 1) % shootSlotPositions.length];
+
+                        }
+                        else if (slot1Valid)
+                        {
+                            tPos = shootSlotPositions[(currentShootSlot + 2) % shootSlotPositions.length];
+                        }
+                        else {
+                            //all slots open
                             shootStep = 0;
                             sequenceStartTime = System.currentTimeMillis();
                         }
-                        break;
-                }
-            }
-            else if (gamepad1.dpad_left) { //just green
-                double currentSPos = getSpindexerAngleDeg();
-                long stepTime = System.currentTimeMillis() - sequenceStartTime;
+                        if (tPos !=- 1)
+                        {
+                            double err = tPos - currentSPos;
+                            if (err < 0) err += 360;
 
-                switch (shootStep) {
-                    case -1: // NEW: INITIAL DECISION
-                        currentShootSlot = getClosestShootSlot();
-                        shootStep = 0;
-                        sequenceStartTime = System.currentTimeMillis();
-                        break;
+                            double timeee = pidTimer.seconds();
+                            pidTimer.reset();
+                            double voltage = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
+                            double deriv = (err - sLastError) / timeee;
+                            double pow = (err * kP) + (deriv * kD);
+                            sLastError = err;
+                            pow = Math.max(-0.5, Math.min(0.5, pow));
 
-                    case 0: // ALIGNING
-                        double targetSPos = shootSlotPositions[currentShootSlot];
-                        double error = targetSPos - currentSPos;
-                        if (error < 0) error += 360;
-
-                        double dt = pidTimer.seconds();
-                        pidTimer.reset();
-                        double voltageComp = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
-                        double derivative = (error - lastError) / dt;
-                        double power = (error * kP) + (derivative * kD);
-                        lastError = error;
-
-                        power = Math.max(-0.5, Math.min(0.5, power));
-
-                        if (error > PositionToleranceDeg) {
-                            spindexer.setPower(power * voltageComp);
-                            sequenceStartTime = System.currentTimeMillis();
-                        } else {
-                            spindexer.setPower(0);
-                            if (stepTime >= 70) { // Wait for settle
-                                shootStep = 1;
+                            if (err > PositionToleranceDeg) {
+                                spindexer.setPower(pow * voltage);
                                 sequenceStartTime = System.currentTimeMillis();
-                                emptySlotCounter = 0;
-                            }
-                        }
-                        break;
-
-                    case 1: // CHECK FOR BALL
-                        // If we see color, IMMEDIATELY pop
-                        if (greenDetect()) {
-                            shootStep = 2;
-                            sequenceStartTime = System.currentTimeMillis();
-                        } else {
-                            // Wait for the EMPTY_CONFIRM_THRESHOLD before giving up
-                            emptySlotCounter++;
-                            if (emptySlotCounter >= EMPTY_CONFIRM_THRESHOLD) {
-                                // Go to NEXT slot in order
-                                currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
-                                shootStep = 0;
-                                sequenceStartTime = System.currentTimeMillis();
+                            } else {
+                                spindexer.setPower(0);
+                                if (stepTime >= 40) { // Wait for settle
+                                    shootStep = 2;
+                                    sequenceStartTime = System.currentTimeMillis();
+                                    emptySlotCounter = 0;
+                                }
                             }
                         }
                         break;
@@ -449,80 +493,7 @@ public class DecodingByEncoding extends LinearOpMode {
                         break;
 
                     case 3: // RETRACT & PREPARE NEXT
-                        popUp.setPosition(0);
-                        // START MOVING TO NEXT SLOT WHILE RETRACTING
-                        if (stepTime >= 150) {
-                            currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
-                            shootStep = 0;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-                }
-            }
-            else if (gamepad1.dpad_right) { //just purple
-                double currentSPos = getSpindexerAngleDeg();
-                long stepTime = System.currentTimeMillis() - sequenceStartTime;
-
-                switch (shootStep) {
-                    case -1: // NEW: INITIAL DECISION
-                        currentShootSlot = getClosestShootSlot();
-                        shootStep = 0;
-                        sequenceStartTime = System.currentTimeMillis();
-                        break;
-
-                    case 0: // ALIGNING
-                        double targetSPos = shootSlotPositions[currentShootSlot];
-                        double error = targetSPos - currentSPos;
-                        if (error < 0) error += 360;
-
-                        double dt = pidTimer.seconds();
-                        pidTimer.reset();
-                        double voltageComp = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
-                        double derivative = (error - lastError) / dt;
-                        double power = (error * kP) + (derivative * kD);
-                        lastError = error;
-
-                        power = Math.max(-0.5, Math.min(0.5, power));
-
-                        if (error > PositionToleranceDeg) {
-                            spindexer.setPower(power * voltageComp);
-                            sequenceStartTime = System.currentTimeMillis();
-                        } else {
-                            spindexer.setPower(0);
-                            if (stepTime >= 70) { // Wait for settle
-                                shootStep = 1;
-                                sequenceStartTime = System.currentTimeMillis();
-                                emptySlotCounter = 0;
-                            }
-                        }
-                        break;
-
-                    case 1: // CHECK FOR BALL
-                        // If we see color, IMMEDIATELY pop
-                        if (purpleDetect()) {
-                            shootStep = 2;
-                            sequenceStartTime = System.currentTimeMillis();
-                        } else {
-                            // Wait for the EMPTY_CONFIRM_THRESHOLD before giving up
-                            emptySlotCounter++;
-                            if (emptySlotCounter >= EMPTY_CONFIRM_THRESHOLD) {
-                                // Go to NEXT slot in order
-                                currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
-                                shootStep = 0;
-                                sequenceStartTime = System.currentTimeMillis();
-                            }
-                        }
-                        break;
-
-                    case 2: // POP UP
-                        popUp.setPosition(0.4);
-                        if (stepTime >= 300) {
-                            shootStep = 3;
-                            sequenceStartTime = System.currentTimeMillis();
-                        }
-                        break;
-
-                    case 3: // RETRACT & PREPARE NEXT
+                        needScan = false;
                         popUp.setPosition(0);
                         // START MOVING TO NEXT SLOT WHILE RETRACTING
                         if (stepTime >= 150) {
@@ -538,7 +509,10 @@ public class DecodingByEncoding extends LinearOpMode {
                 shootStep = -1;
                 lastError = 0;
                 popUp.setPosition(0);
+                needScan = true;
             }
+
+
 
 
 
@@ -665,7 +639,7 @@ public class DecodingByEncoding extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1367.6*(Math.pow(dist, 0.19183)) + 30;//0.173 original
+        double velocity = 1367.6*(Math.pow(dist, 0.19183)) + 50;//0.173 original
         if (dist<=1.2)
         {
             velocity = velocity +35;
@@ -912,7 +886,90 @@ public class DecodingByEncoding extends LinearOpMode {
             turnTurret.setVelocity(-900);
         }
     }
+    public void scan()
+    {
+        NormalizedRGBA in2Pos = colorBack.getNormalizedColors();
+        NormalizedRGBA in0Pos = color0.getNormalizedColors();
+        NormalizedRGBA in1Pos = color1.getNormalizedColors();
 
+        if (in0Pos.blue > 0.001 && in0Pos.blue > in0Pos.green)
+        {
+            scanResults[0] = "purple";
+        }
+        else if (in0Pos.green>0.0013)
+        {
+            scanResults[0] = "green";
+        }
+        else {
+            scanResults[0] = "open";
+        }
+
+        if (in1Pos.blue > 0.001 && in1Pos.blue > in1Pos.green)
+        {
+            scanResults[1] = "purple";
+        }
+        else if (in1Pos.green > 0.0013)
+        {
+            scanResults[1] = "green";
+        }
+        else {
+            scanResults[1] = "open";
+        }
+
+        if (in2Pos.blue > 0.0012 && in2Pos.blue > in2Pos.green)
+        {
+            scanResults[2] = "purple";
+        }
+        else if (in2Pos.green > 0.0013)
+        {
+            scanResults[2] = "green";
+        }
+        else {
+            scanResults[2] = "open";
+        }
+
+
+        telemetry.addData("scan results: ",scanResults[0] + ", " + scanResults[1] + ", " + scanResults[2]);
+        telemetry.update();
+
+
+    }
+    /*private int getClosestOpenForwardSlot() {
+        double currentPos = getSpindexerAngleDeg();
+        int bestSlot = -1;
+        double minForwardDistance = 400;
+
+        for (int i = 0; i < intakeSlotPositions.length; i++) {
+
+            if (isSlotFull(i)) continue;  // skip filled slots
+
+            double distance = intakeSlotPositions[i] - currentPos;
+            if (distance < 0) distance += 360;
+
+            if (distance < minForwardDistance) {
+                minForwardDistance = distance;
+                bestSlot = i;
+            }
+        }
+
+        // If all are full, just return closest forward (fallback)
+        if (bestSlot == -1) {
+            return getClosestForwardSlot();
+        }
+
+        return bestSlot;
+    }
+    private boolean isSlotFull(int index) {
+        switch(index) {
+            case 0:
+                return slot0Detect();
+            case 1:
+                return slot1Detect();
+            case 2:
+                return slot2Detect();
+        }
+        return false;
+    }*/
 
 
 }
