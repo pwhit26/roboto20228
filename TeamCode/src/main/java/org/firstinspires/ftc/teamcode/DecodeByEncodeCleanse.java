@@ -85,7 +85,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     boolean pastCheck;
     private Follower poseUpdater;
     private Follower drive;
-    private final Pose GOAL_POSE = new Pose(72, 72); // blue goal location (72,72), red goal is (72, -72)
+    private final Pose GOAL_POSE = new Pose(66, 72); // blue goal location (72,72), red goal is (72, -72)
     private double lastTurretAngleDeg = 0;
     String[] scanResults = {"open", "open", "open"};
     boolean needScan = true;
@@ -121,6 +121,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     double filteredVX = 0;
     double filteredVY = 0;
     static final double HEADING_GAIN = 0.96;
+    double turretTargetRad = 0;
 
 
 
@@ -313,25 +314,37 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                 if (ll != null) {
                     List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
+                    boolean correctTagSeen = false;
 
                     for (LLResultTypes.FiducialResult fr : fiducials) {
                         long tagId = fr.getFiducialId();
                         telemetry.addData("Detected Tag", tagId);
 
                         if (tagId == 20) {
+                            correctTagSeen = true;
                             Id = tagId;
                             targetTag = fr;
+
+                            /*double txRad = Math.toRadians(ll.getTx());
+
+                            double correctionSpeed = 0.02;
+                            turretZeroOffsetDeg -= Math.toDegrees(txRad) * correctionSpeed;
+                            turretTargetRad += txRad * 0.1;*/
                             break; // stop once we found red goal
                         }
                     }
-                    if (targetTag != null && Id == 20 && ll.isValid()) {
+                   /* if (!correctTagSeen)
+                    {
+                        turretZeroOffsetDeg *= 0.95;
+                    }*/
+                    if (targetTag != null && ll.isValid()) {
                         boolean isValid = ll.isValid();
                         double tx = ll.getTx();
                         double txRad = Math.toRadians(tx);
-                        if (Math.abs(txRad) < Math.toRadians(0.25)) txRad = 0;
+                       /* if (Math.abs(txRad) < Math.toRadians(0.25)) txRad = 0;
                         limelightCorrectionRad =
                                 0.85 * limelightCorrectionRad +
-                                        0.15 * txRad;
+                                        0.15 * txRad;*/
 
                         double ty = ll.getTy();
                         double ta = ll.getTa();
@@ -1158,42 +1171,82 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
         double robotY = pose.getY();
         double robotHeadingRad = pose.getHeading();
 
-        // Target vector
+        // Vector to target (pose-based)
         double dx = targetX - robotX;
         double dy = targetY - robotY;
 
+        // Field-relative angle to target
         double fieldAngleRad = Math.atan2(dy, dx);
 
-        // Apply limelight correction ONCE
-        fieldAngleRad += Range.clip(limelightCorrectionRad, -MAX_LL_CORRECTION_RAD, MAX_LL_CORRECTION_RAD);
-
-        // Robot-relative turret angle
+        // Robot-relative turret angle (based on pose)
         double turretTargetRad = fieldAngleRad - robotHeadingRad;
 
-        // Motion prediction (if moving)
+        // Motion prediction for moving robot
         double distanceToGoal = Math.hypot(dx, dy);
         double tangentialVelocity = -robotVY * Math.cos(fieldAngleRad) + robotVX * Math.sin(fieldAngleRad);
         double leadAngle = Math.atan2(tangentialVelocity * SHOT_TIME, distanceToGoal);
         turretTargetRad += leadAngle;
 
-        // Normalize
+        // ----- Limelight correction (only apply if correct tag seen) -----
+        if (limelight != null) {
+            LLResult ll = limelight.getLatestResult();
+            if (ll != null && ll.isValid()) {
+                List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
+
+                boolean correctTagSeen = false;
+                for (LLResultTypes.FiducialResult fr : fiducials) {
+                    long tagId = fr.getFiducialId();
+                    // Only apply if this is our blue goal tag
+                    if (tagId == 20) {
+                        correctTagSeen = true;
+                        double txRad = Math.toRadians(ll.getTx());
+
+                        // Smoothly nudge zero offset
+                        double correctionSpeed = 0.05; // smaller = smoother
+                        turretZeroOffsetDeg -= Math.toDegrees(txRad) * correctionSpeed;
+
+                        // Optional small immediate nudge to target angle
+                        turretTargetRad += txRad * 0.1;
+                        break;
+                    }
+                }
+
+                if (!correctTagSeen) {
+                    // Slowly decay previous correction so wrong tags don't mess it up
+                    turretZeroOffsetDeg *= 0.95;
+                }
+
+                // Clamp zero offset to reasonable bounds
+                turretZeroOffsetDeg = Range.clip(turretZeroOffsetDeg, -10, 10);
+            }
+        }
+
+        // Normalize angle to -π..π
         turretTargetRad = Math.atan2(Math.sin(turretTargetRad), Math.cos(turretTargetRad));
 
+        // Convert to degrees
         double turretTargetDeg = Math.toDegrees(turretTargetRad);
 
-        // Symmetric distance bias
-        double bias = (dx > 0 ? 1 : -1) * Range.clip(distanceToGoal * 0.002, 0, 2.0);
-        turretTargetDeg += bias;
-
-        // Zero offset
+        // Apply zero offset
         turretTargetDeg += turretZeroOffsetDeg;
 
+        // Clamp to physical limits
         turretTargetDeg = Range.clip(turretTargetDeg, MIN_TURRET_ANGLE, MAX_TURRET_ANGLE);
 
+        // Convert to motor ticks
         int targetTicks = (int)(Math.toRadians(turretTargetDeg) * TICKS_PER_RAD);
+
+        // Command turret
         turnTurret.setTargetPosition(targetTicks);
         turnTurret.setPower(0.6);
+
+        // Telemetry for debugging
+        telemetry.addData("Turret Target Deg", turretTargetDeg);
+        telemetry.addData("Zero Offset", turretZeroOffsetDeg);
+        telemetry.addData("Distance to Goal", distanceToGoal);
+        telemetry.update();
     }
+
 
 
 
