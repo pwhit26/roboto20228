@@ -22,6 +22,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.Range;
 
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.TurretMath;
 
@@ -67,8 +68,8 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     static final int numIntakeSlots = 3;
     int[] intakeSlotPositions = {110, 230, 355};
     int[] shootSlotPositions = {65, 190, 305};
-    static final double kP = 0.0155; // Start small
-    static final double kD = 0.0008; // Helps prevent overshoot
+    static final double kP = 0.023; // Start small 0.018 original
+    static final double kD = 0.0009; // Helps prevent overshoot 0.0009 original
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
@@ -122,6 +123,18 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     double filteredVY = 0;
     static final double HEADING_GAIN = 0.96;
     double turretTargetRad = 0;
+    double distance = 0;
+    int settleCounter = 0;
+    boolean yLast = false;
+    boolean intakeActive = false;
+    static final int SETTLE_THRESHOLD = 4;
+    static final double MIN_DT = 0.01;
+    static final double CURRENT_THRESHOLD = 3.5;
+    static final int CURRENT_CONFIRM_LOOPS = 3;
+    double positionDeadband = 1.2;     // Degrees — tiny buffer to prevent jitter skip
+    double velocityDeadband = 5;       // deg/sec — must be basically stopped
+    double minMoveThreshold = 0.8;     // ignore tiny encoder noise
+    double lastPosition = 0;
 
 
 
@@ -130,7 +143,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
     Servo angleTurret0, angleTurret1, popUp;
     DcMotorEx turret, intake, frontRight, frontLeft, backRight, backLeft, spindexer, turnTurret;
-    boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
+    boolean xLast, bLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -251,6 +264,8 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
             follower.update(); // update localization
 
+            //applyVisionHeadingCorrection();
+
             Pose currentPose = follower.getPose();
 
             double currentTime = getRuntime();
@@ -355,6 +370,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
 
                         double dist = calculateDistance(ty, tx);
+                        distance = dist;
 
                         setTurretAngle(dist);
                         if (gamepad1.b) {
@@ -384,17 +400,25 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
             //Intake Macro
             // --- Inside your while(opModeIsActive) loop ---
 
+            /*if (gamepad1.a && !gamepad1.y && !gamepad1.left_bumper)
+            {
+                intake.setDirection(DcMotorSimple.Direction.REVERSE);
+                intake.setPower(1);
+            }
+            else {
+                intake.setDirection(DcMotorSimple.Direction.FORWARD);
+            }*/
+
             if (gamepad1.y) {
                 double currentPos = getSpindexerAngleDeg();
                 double targetPos = intakeSlotPositions[currentSlot];
                 long stepTime = System.currentTimeMillis() - sequenceStartTime;
 
 
-                // 1. Calculate Forward Distance (to ensure it only spins one way)
+                // 1. Calculate Forwards Distance (to ensure it only spins one way)
                 double error = targetPos - currentPos;
-                if (error < 0) {
-                    error += 360; // Force the motor to find the target by spinning forward
-                }
+                while (error > 180) error -= 360;
+                while (error <= -180) error += 360;
 
                 switch (intakeStep) {
                     case -1: // INITIAL DECISION (Lazy Logic)
@@ -423,14 +447,14 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         power = Math.max(-0.5, Math.min(0.5, power));
                         double minPower = 0.15; // Minimum power to overcome friction
 
-                        if (error > PositionToleranceDeg) {
+                        if (Math.abs(error) > PositionToleranceDeg) {
                             double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
                             spindexer.setPower(finalPower * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
                             // Wait for settle before turning on the intake motor
-                            if (stepTime >= 20) {
+                            if (stepTime >= 10) {
                                 intakeStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                             }
@@ -468,9 +492,15 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                         break;
                 }
-            } else if (gamepad1.left_bumper && !gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right)
+            }
+
+            else if (gamepad1.left_bumper && !gamepad1.y && !gamepad1.a)
             {
                 intake.setPower(0.8);
+            }
+            else if (gamepad1.a && !gamepad1.y && !gamepad1.left_bumper)
+            {
+                intake.setPower(-0.8);
             }
             else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.left_bumper){
                 // Reset logic when button is released
@@ -518,7 +548,8 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                     case 0: // ALIGNING
                         double targetSPos = shootSlotPositions[currentShootSlot];
                         double error = targetSPos - currentSPos;
-                        if (error < 0) error += 360;
+                        while (error > 180) error -= 360;
+                        while (error <= -180) error += 360;
 
                         double dt = pidTimer.seconds();
                         pidTimer.reset();
@@ -527,17 +558,17 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         double power = (error * kP) + (derivative * kD);
                         lastError = error;
 
-                        power = Math.max(-0.5, Math.min(0.5, power));
+                        power = Math.max(-0.7, Math.min(0.7, power));
 
                         if (needScan)
                         {
-                            if (error > PositionToleranceDeg) {
+                            if (Math.abs(error) > PositionToleranceDeg) {
                                 spindexer.setPower(power * voltageComp);
                                 sequenceStartTime = System.currentTimeMillis();
                             } else {
                                 spindexer.setPower(0);
                                 scan();
-                                if (stepTime >= 50) {
+                                if (stepTime >= 5) {
                                     shootStep = 1;
                                     sequenceStartTime = System.currentTimeMillis();
                                     emptySlotCounter = 0;
@@ -591,7 +622,8 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         if (tPos !=- 1)
                         {
                             double err = tPos - currentSPos;
-                            if (err < 0) err += 360;
+                            while (err > 180) err -= 360;
+                            while (err <= -180) err += 360;
 
                             double timeee = pidTimer.seconds();
                             pidTimer.reset();
@@ -599,14 +631,14 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                             double deriv = (err - sLastError) / timeee;
                             double pow = (err * kP) + (deriv * kD);
                             sLastError = err;
-                            pow = Math.max(-0.5, Math.min(0.5, pow));
+                            pow = Math.max(-0.7, Math.min(0.7, pow));
 
-                            if (err > PositionToleranceDeg) {
+                            if (Math.abs(err) > PositionToleranceDeg) {
                                 spindexer.setPower(pow * voltage);
                                 sequenceStartTime = System.currentTimeMillis();
                             } else {
                                 spindexer.setPower(0);
-                                if (stepTime >= 40) { // Wait for settle
+                                if (stepTime >= 5) { // Wait for settle
                                     shootStep = 2;
                                     sequenceStartTime = System.currentTimeMillis();
                                     emptySlotCounter = 0;
@@ -617,7 +649,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                     case 2: // POP UP
                         popUp.setPosition(0.4);
-                        if (stepTime >= 300) {
+                        if (stepTime >= 225) {
                             shootStep = 3;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -779,8 +811,8 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1367.6*(Math.pow(dist, 0.19183)) + 30;//0.173 original
-        if (dist<=1.2)
+        double velocity = 1238.6953*(Math.pow(dist, 0.35233));//0.173 original
+        /*if (dist<=1.2)
         {
             velocity = velocity +35;
         }
@@ -809,7 +841,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
         if (gamepad1.right_bumper)
         {
             velocity = velocity + 75;
-        }
+        }*/
 
 
 
@@ -955,14 +987,15 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     private int getClosestShootSlot() {
         double currentPos = getSpindexerAngleDeg();
         int bestSlot = 0;
-        double minForwardDistance = 400;
+        double minDistance = 400;
 
         for (int i = 0; i < shootSlotPositions.length; i++) {
             double distance = shootSlotPositions[i] - currentPos;
-            if (distance < 0) distance += 360; // Forward only
-
-            if (distance < minForwardDistance) {
-                minForwardDistance = distance;
+            while (distance > 180) distance -= 360;
+            while (distance <= -180) distance += 360;
+            
+            if (Math.abs(distance) < minDistance) {
+                minDistance = Math.abs(distance);
                 bestSlot = i;
             }
         }
@@ -971,19 +1004,15 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     private int getClosestForwardSlot() {
         double currentPos = getSpindexerAngleDeg();
         int bestSlot = currentSlot;
-        double minForwardDistance = 400; // Larger than 360
+        double minDistance = 400; 
 
         for (int i = 0; i < intakeSlotPositions.length; i++) {
             double distance = intakeSlotPositions[i] - currentPos;
+            while (distance > 180) distance -= 360;
+            while (distance <= -180) distance += 360;
 
-            // If the distance is negative, it means the slot is "behind" us.
-            // We add 360 to find the distance to reach it by spinning forward.
-            if (distance < 0) {
-                distance += 360;
-            }
-
-            if (distance < minForwardDistance) {
-                minForwardDistance = distance;
+            if (Math.abs(distance) < minDistance) {
+                minDistance = Math.abs(distance);
                 bestSlot = i;
             }
         }
@@ -1201,6 +1230,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         correctTagSeen = true;
                         double txRad = Math.toRadians(ll.getTx());
 
+
                         // Smoothly nudge zero offset
                         double correctionSpeed = 0.05; // smaller = smoother
                         turretZeroOffsetDeg -= Math.toDegrees(txRad) * correctionSpeed;
@@ -1228,7 +1258,13 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
         double turretTargetDeg = Math.toDegrees(turretTargetRad);
 
         // Apply zero offset
-        turretTargetDeg += turretZeroOffsetDeg;
+        turretTargetDeg += turretZeroOffsetDeg + 2 ;
+
+        if (distance>=2.4)
+        {
+            turretTargetDeg += 2;
+        }
+
 
         // Clamp to physical limits
         turretTargetDeg = Range.clip(turretTargetDeg, MIN_TURRET_ANGLE, MAX_TURRET_ANGLE);
@@ -1246,6 +1282,9 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
         telemetry.addData("Distance to Goal", distanceToGoal);
         telemetry.update();
     }
+
+
+
 
 
 

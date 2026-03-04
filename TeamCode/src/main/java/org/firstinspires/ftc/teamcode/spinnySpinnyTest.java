@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.ICE;
+package org.firstinspires.ftc.teamcode;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
@@ -23,10 +23,9 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.List;
-//no motif
 
 @Autonomous
-public class SpinOnUrOwn extends OpMode {
+public class spinnySpinnyTest extends OpMode {
     private Follower follower;
     private Pose start, shoot, shoot2, preScoop1, scoop1, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain, jiggle;
     private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3, postJiggle;
@@ -72,18 +71,21 @@ public class SpinOnUrOwn extends OpMode {
     double sLastError = 0;
     private int intakeConfirmCounter = 0;
     private static final int INTAKE_CONFIRM_THRESHOLD = 4;
-    double shootLastError = 0;
-    ElapsedTime shootPidTimer = new ElapsedTime();
-
-    double intakeLastError = 0;
-    ElapsedTime intakePidTimer = new ElapsedTime();
     //hi
     Limelight3A limelight;
-    RevColorSensorV3 colorBack, colorFront, color0;
+    RevColorSensorV3 colorBack, colorFront, color0, color1;
     Servo angleTurret0, angleTurret1, popUp;
     DcMotorEx turret, intake, spindexer, frontRight, frontLeft, backRight, backLeft, turnTurret;
     boolean xLast, bLast, lbumpLast, bPressable, xPressable, lbumpPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
-
+    long sequenceStartTime = 0;
+    int shootStep = 0;
+    boolean needScan = true;
+    String[] scanResults = {"open", "open", "open"};
+    private int emptySlotCounter = 0;
+    private boolean slot0Valid = false;
+    private boolean slot1Valid = false;
+    private boolean slot2Valid = false;
+    String targetColorMode = "purple";
 
     @Override
     public void init() {
@@ -106,8 +108,6 @@ public class SpinOnUrOwn extends OpMode {
         encoder = hardwareMap.get(AnalogInput.class, "encoder");
 
         batteryVoltageSensor = hardwareMap.voltageSensor.iterator().next();
-
-
 
 
         turret=hardwareMap.get(DcMotorEx.class, "turret");
@@ -137,7 +137,7 @@ public class SpinOnUrOwn extends OpMode {
         //spindexer.setPower(0.3);
         colorBack = hardwareMap.get(RevColorSensorV3.class, "colorBack");
         color0 = hardwareMap.get(RevColorSensorV3.class, "color0");
-        //color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
+        color1 = hardwareMap.get(RevColorSensorV3.class, "color1");
         colorFront=hardwareMap.get(RevColorSensorV3.class, "colorFront");
 
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -306,7 +306,7 @@ public class SpinOnUrOwn extends OpMode {
         switch (pathStage) {
 
             case 0:
-                /*telemetry.addData("Current Id", Id);
+                telemetry.addData("Current Id", Id);
                 IdGame = Id; //this may not work but doing this to set a variable for each game to reference as the motif Id in case it gets messed up
 
                 if (Id == 21) {
@@ -331,12 +331,12 @@ public class SpinOnUrOwn extends OpMode {
                     status23 = false;
                     // telemetry.update();
                     break; // stay here until a valid tag
-                }*/
+                }
 
 
 
                 // turned this time up to see the telemetry
-                if (elapsedTime >= 50) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis(); // reset timer for next stage
                 }
@@ -344,10 +344,7 @@ public class SpinOnUrOwn extends OpMode {
 
             case 1: //little baby first move
                 turret.setVelocity(800); //ball 1
-                angleTurret0.setPosition(0.005);
-                angleTurret1.setPosition(0.995);
-                // follower.followPath(startShoot);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -357,26 +354,62 @@ public class SpinOnUrOwn extends OpMode {
             case 2: // start turret
 
                 if (!follower.isBusy()) {
-                    pathStage = 4;
+
+                    angleTurret0.setPosition(0.005);
+                    angleTurret1.setPosition(0.995);
+                }
+                if (elapsedTime >= 600) {
+                    pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Starting to shoot");
                 break;
-
-            case 4:
-
-                shootAlign(0);
-
-                if (spindexerAtTarget(shootSlotPositions[0]))
+            case 3:
+                if (!follower.isBusy())
                 {
-
-                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
                     pathStage++;
+                    sortStep=0;
                     startTime = System.currentTimeMillis();
                 }
+                break;
 
+            case 4:  // Sort first ball cleanly
 
+                wantGreen = status21;
+                wantPurple = (status22 || status23);
 
+                // ---- Choose target based on sortStep ----
+                if (sortStep == 0) {
+                    spindexer.setTargetPosition(95);
+                }
+                else if (sortStep == 1) {
+                    spindexer.setTargetPosition(275);
+                }
+                else if (sortStep == 2) {
+                    spindexer.setTargetPosition(445);
+                }
+
+                // ---- Check if correct color found ----
+                if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
+                    slotAlreadyChecked = sortStep;
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                    sortStep = 0;  // reset for next cycle
+                    break;
+                }
+
+                // ---- If time passed, advance to next slot ----
+                if (elapsedTime > 400) {
+                    startTime = System.currentTimeMillis(); // reset timer for next slot
+                    sortStep++;
+
+                    // If we've checked all 3 slots, give up and move on
+                    if (sortStep > 2) {
+                        pathStage++;
+                        sortStep = 0;
+                        slotAlreadyChecked = 0;
+                    }
+                }
 
                 break;
 
@@ -386,7 +419,7 @@ public class SpinOnUrOwn extends OpMode {
                 angleTurret0.setPosition(0.015);
                 angleTurret1.setPosition(0.985);
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -395,30 +428,53 @@ public class SpinOnUrOwn extends OpMode {
             case 6: //pop up down
                 popUp.setPosition(0);
                 turret.setVelocity(600); //ball 2
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
             case 7: //spindex to next spot
+                wantGreen = status22;
+                wantPurple = (status21 || status23);
 
-                shootAlign(1);
+                // ---- Choose target based on sortStep ----
+                if (sortStep == 0 && slotAlreadyChecked != 0) {
+                    spindexer.setTargetPosition(95);
+                }
+                else if (sortStep == 1 && slotAlreadyChecked != 1) {
+                    spindexer.setTargetPosition(275);
+                }
+                else if (sortStep == 2 && slotAlreadyChecked != 2) {
+                    spindexer.setTargetPosition(445);
+                }
 
-                if (spindexerAtTarget(shootSlotPositions[1]))
-                {
-
-                    telemetry.addData("position", "slot 1 - " + getSpindexerAngleDeg());
+                // ---- Check if correct color found ----
+                if ((wantGreen && greenDetect()) || (wantPurple && purpleDetect())) {
+                    secondSlotChecked = sortStep;
                     pathStage++;
                     startTime = System.currentTimeMillis();
+                    sortStep = 0;  // reset for next cycle
+                    break;
+                }
 
+                // ---- If time passed, advance to next slot ----
+                if (elapsedTime > 400) {
+                    startTime = System.currentTimeMillis(); // reset timer for next slot
+                    sortStep++;
+
+                    // If we've checked all 3 slots, give up and move on
+                    if (sortStep > 2) {
+                        pathStage++;
+                        sortStep = 0;
+                    }
                 }
 
                 break;
 
             case 8: //pop up shoot
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -426,8 +482,8 @@ public class SpinOnUrOwn extends OpMode {
 
             case 9: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(350); //ball 3
-                if (elapsedTime >= 300) {
+                turret.setVelocity(300); //ball 3
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -435,22 +491,33 @@ public class SpinOnUrOwn extends OpMode {
 
 
             case 10: //spindex to next spot
-
-                shootAlign(2);
-
-                if (spindexerAtTarget(shootSlotPositions[2]))
+                if (!follower.isBusy()) {
+                    if (slotAlreadyChecked != 0 && secondSlotChecked != 0)
+                    {
+                        spindexer.setTargetPosition(95);
+                    }
+                    else if (slotAlreadyChecked != 1 && secondSlotChecked != 1)
+                    {
+                        spindexer.setTargetPosition(275);
+                    }
+                    else
+                    {
+                        spindexer.setTargetPosition(445);
+                    }
+                }
+                if (elapsedTime>=400)
                 {
-
-                    telemetry.addData("position", "slot 2 - " + getSpindexerAngleDeg());
                     pathStage++;
                     startTime = System.currentTimeMillis();
-
+                    slotAlreadyChecked = 0;
+                    secondSlotChecked = 0;
+                    sortStep = 0;
                 }
                 break;
 
             case 11: //pop up shoot
-                popUp.setPosition(0.43);
-                if (elapsedTime >= 300) {
+                popUp.setPosition(0.4);
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -458,7 +525,7 @@ public class SpinOnUrOwn extends OpMode {
 
             case 12: //pop up down
                 popUp.setPosition(0);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 700) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -467,14 +534,16 @@ public class SpinOnUrOwn extends OpMode {
             case 13:
                 if (!follower.isBusy()) {
                     turret.setVelocity(0);
+                    //  follower.followPath(shootPre1);
                 }
-                if (elapsedTime >= 500) {
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
+                /*
             case 14:
-             //   follower.followPath(shootPre1);
+                //   follower.followPath(shootPre1);
                 //spindexer.setPower(0.6);
                 intakeAlign(2);
                 if (spindexerAtTarget(intakeSlotPositions[2]))
@@ -501,13 +570,14 @@ public class SpinOnUrOwn extends OpMode {
                 // Start the path
                 if (!preScoStarted) {
                     intake.setPower(0.8);
-                  //  follower.followPath(preSco1);
+                    //  follower.followPath(preSco1);
 
                     preScoStarted = true;
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
+
             case 17:
 
 
@@ -525,7 +595,7 @@ public class SpinOnUrOwn extends OpMode {
                 {
                     intakeAlign(0);
                 }
-                if (spindexerAtTarget(intakeSlotPositions[0]))
+                if (spindexerAtTarget(intakeSlotPositions[2]))
                 {
 
                     telemetry.addData("position", " intake slot 0 - " + getSpindexerAngleDeg());
@@ -557,7 +627,7 @@ public class SpinOnUrOwn extends OpMode {
                 {
                     intakeAlign(1);
                 }
-                if (spindexerAtTarget(intakeSlotPositions[1]))
+                if (spindexerAtTarget(intakeSlotPositions[2]))
                 {
 
                     telemetry.addData("position", " intake slot 1 - " + getSpindexerAngleDeg());
@@ -583,7 +653,71 @@ public class SpinOnUrOwn extends OpMode {
                 }
                 break;
 
+           / case 18:
+                if (!spindexer.isBusy() && !intake.isBusy()) {
+                    intakeAlign(0);
+                    telemetry.addData("position", " intake slot 0 - " + getSpindexerAngleDeg());
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+            case 19:
+                if (elapsedTime>=800)
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                    preScoStarted = false;
+                }
+                break;
+            case 20:
+                if (!follower.isBusy()) {
+                    intake.setPower(0.8);
+                 //   follower.followPath(intake2);
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+            case 21:
+                if (elapsedTime >= 1200) { //1470
+                    intake.setPower(0);
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
 
+            case 22:
+                if (!spindexer.isBusy() && !intake.isBusy())
+                {
+                    intakeAlign(1);
+                    telemetry.addData("position", " intake slot 1 - " + getSpindexerAngleDeg());
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+            case 23:
+                if (elapsedTime>=800)
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+
+                break;
+            case 24:
+                if (!follower.isBusy()) {
+                    intake.setPower(0.8);
+                //    follower.followPath(intake3);
+                }
+                if (elapsedTime>=1850) //1850
+                {
+                    turret.setVelocity(800);
+                    intake.setPower(0);
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            //case 28:
+            // break;
 
             case 23: //little baby first move
                 turret.setVelocity(500); //ball 1
@@ -638,7 +772,7 @@ public class SpinOnUrOwn extends OpMode {
             case 27: //pop up down
                 popUp.setPosition(0);
                 turret.setVelocity(500); //ball 2
-                if (elapsedTime >= 300) {
+                if (popUp.getPosition() == 0) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -670,357 +804,161 @@ public class SpinOnUrOwn extends OpMode {
             case 30: //pop up down
                 popUp.setPosition(0);
                 turret.setVelocity(300); //ball 3
-                if (elapsedTime >= 300) {
+                if (popUp.getPosition() == 0) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
-                telemetry.addData("FINISHED HERE? 30", pathStage);
-
                 break;
+
             case 31:
-                shootAlign(2);
-                if (spindexerAtTarget(shootSlotPositions[2]))
-                {
-
-                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 32:
-                popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 33:
-                popUp.setPosition(0);
-                //turret.setVelocity(300); //ball 3
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("6th ball shot", pathStage);
-
                 break;
 
-            case 34:
-                //   follower.followPath(shootPre1);
-                //spindexer.setPower(0.6);
-                intakeAlign(2);
-                if (spindexerAtTarget(intakeSlotPositions[2]))
-                {
 
-                    telemetry.addData("position", " intake slot 2 - " + getSpindexerAngleDeg());
 
-                }
-                //intake.setPower(0);
-                if (elapsedTime >= 800) {
+            /*case 19:
+             //   follower.followPath(shootPre2);
+                turret.setVelocity(800);
+                //startTime = System.currentTimeMillis();
+                if (elapsedTime >= 600) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Starting second path");
-                telemetry.addData("FINISHED HERE 31", pathStage);
                 break;
-            case 35:
-                if (!follower.isBusy()) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 36:
-
-                // Start the path
-                intake.setPower(0.8);
-                //  follower.followPath(preSco1);
-
-                pathStage++;
-                startTime = System.currentTimeMillis();
-                break;
-            case 37:
-
-
-                //elapsedTime = System.currentTimeMillis() - startTime;
-
-                // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1200) { //1450
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 38:
-                if (!intake.isBusy())
+            case 20:
+                if (!follower.isBusy())
                 {
-                    intakeAlign(0);
-                }
-                if (spindexerAtTarget(intakeSlotPositions[0]))
-                {
-
-                    telemetry.addData("position", " intake slot 0 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
-                if (elapsedTime >= 800) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 39:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    //   follower.followPath(intake2);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 40:
-                if (elapsedTime >= 1200) { //1470
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 41:
-                if (!intake.isBusy())
-                {
-                    intakeAlign(1);
-                }
-                if (spindexerAtTarget(intakeSlotPositions[1]))
-                {
-
-                    telemetry.addData("position", " intake slot 1 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
-                if (elapsedTime >= 800) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 42:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    //    follower.followPath(intake3);
-                }
-                if (elapsedTime>=1000) //1850
-                {
-                    turret.setVelocity(800);
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 43:
-
-                shootAlign(2);
-
-                if (spindexerAtTarget(shootSlotPositions[2]))
-                {
-
-                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-
-
-
-
-                break;
-
-
-
-            case 44: //pop up shoot
-                angleTurret0.setPosition(0.015);
-                angleTurret1.setPosition(0.985);
-                popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 45: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(500); //ball 2
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 46: //spindex to next spot
-
-                shootAlign(0);
-
-                if (spindexerAtTarget(shootSlotPositions[0]))
-                {
-
+                    shootAlign(1);
                     telemetry.addData("position", "slot 1 - " + getSpindexerAngleDeg());
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-
-                }
-
-                break;
-
-            case 47: //pop up shoot
-                popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
-                    pathStage++;
+                    pathStage=23;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 48: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(300); //ball 3
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("FINISHED HERE? 30", pathStage);
 
-                break;
-            case 49:
-                shootAlign(1);
-                if (spindexerAtTarget(shootSlotPositions[1]))
+            case 23:
+                turnTurret.setTargetPosition(-5);
+                if (elapsedTime>=800)
                 {
-
-                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 50:
+
+            case 24: // pop up shoot
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 51:
-                popUp.setPosition(0);
-                //turret.setVelocity(300); //ball 3
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("6th ball shot", pathStage);
-
-                break;
-            case 52:
-                //   follower.followPath(shootPre1);
-                //spindexer.setPower(0.6);
-                intakeAlign(2);
-                if (spindexerAtTarget(intakeSlotPositions[2]))
-                {
-
-                    telemetry.addData("position", " intake slot 2 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
                 if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
-                telemetry.addData("Status", "Starting second path");
-                telemetry.addData("FINISHED HERE 31", pathStage);
                 break;
-            case 53:
-                if (!follower.isBusy()) {
+
+
+
+            case 25: // pop down + spin shooter
+                popUp.setPosition(0);
+                if (elapsedTime >= 800) {
+                    turnTurret.setTargetPosition(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 54:
 
-                // Start the path
-                intake.setPower(0.8);
-                //  follower.followPath(preSco1);
+            case 26: // move from jiggle to shoot2
+            //    follower.followPath(postJiggle);
+                turret.setVelocity(800);
+                if (elapsedTime>= 800)
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
 
+
+
+            case 27: // second slot of second-half sort
+                if (!follower.isBusy())
+                {
+                    shootAlign(2);
+                    telemetry.addData("position", "slot 2 - " + getSpindexerAngleDeg());
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+
+            case 28: //pop up shoot
+                popUp.setPosition(0.4);
+                if (elapsedTime >= 800) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 29: //pop up down
+                popUp.setPosition(0);
+                turret.setVelocity(800); //ball 3
+                if (elapsedTime >= 800) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+
+            case 30: //spindex to next spot
+                shootAlign(0);
+                telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
                 pathStage++;
                 startTime = System.currentTimeMillis();
                 break;
-            case 55:
 
-
-                //elapsedTime = System.currentTimeMillis() - startTime;
-
-                // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1200) { //1450
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 56:
-                if (!intake.isBusy())
-                {
-                    intakeAlign(0);
-                }
-                if (spindexerAtTarget(intakeSlotPositions[0]))
-                {
-
-                    telemetry.addData("position", " intake slot 0 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
+            case 31: //pop up shoot
+                popUp.setPosition(0.4);
                 if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 57:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    //   follower.followPath(intake2);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 58:
-                if (elapsedTime >= 1200) { //1470
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 59:
-                if (!intake.isBusy())
-                {
-                    intakeAlign(1);
-                }
-                if (spindexerAtTarget(intakeSlotPositions[1]))
-                {
 
-                    telemetry.addData("position", " intake slot 1 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
+            case 32: //pop up down
+                popUp.setPosition(0);
                 if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 60:
+
+            case 33:
                 if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    //    follower.followPath(intake3);
+                    turret.setVelocity(0);
+                    //  follower.followPath(shootPre1);
                 }
-                if (elapsedTime>=1000) //1850
-                {
-                    turret.setVelocity(800);
-                    intake.setPower(0);
+                if (elapsedTime >= 800) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
+            case 34:
+              //  follower.followPath(park);
+                pathStage++;
+                startTime = System.currentTimeMillis();
+                /*if (elapsedTime >= 1000) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("Status", "move move");
+                break;
+
+            case 35: //pop up down
+                popUp.setPosition(0);
+                if (elapsedTime >= 800) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;*/
 
 
-
-            case 61: // All paths complete
+            case 37: // All paths complete
                 // Robot is stopped, do nothing
                 terminateOpModeNow();
                 return;
@@ -1273,19 +1211,16 @@ public class SpinOnUrOwn extends OpMode {
     {
         double targetSPos = shootSlotPositions[currentSlot];
         double error = targetSPos - getSpindexerAngleDeg();
-        
-        while (error > 180) error -= 360;
-        while (error <= -180) error += 360;
-        
-        double dt = Math.max(shootPidTimer.seconds(), 0.02);
-        shootPidTimer.reset();
+        if (error < 0) error += 360;
+        double dt = Math.max(pidTimer.seconds(), 0.02);
+        pidTimer.reset();
         double voltageComp = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
-        double derivative = (error - shootLastError) / dt;
+        double derivative = (error - lastError) / dt;
         double power = (error * kP) + (derivative * kD);
-        shootLastError = error;
+        lastError = error;
 
         power = Math.max(-0.3, Math.min(0.3, power));
-        if (Math.abs(error) > PositionToleranceDeg) {
+        if (error > PositionToleranceDeg) {
             spindexer.setPower(power * voltageComp);
         } else {
             spindexer.setPower(0);
@@ -1298,13 +1233,13 @@ public class SpinOnUrOwn extends OpMode {
         double targetPos = intakeSlotPositions[slot];
 
 
-        // 1. Calculate shortest distance to prevent spinning forever on overshoot
+        // 1. Calculate Forward Distance (to ensure it only spins one way)
         double error = targetPos - getSpindexerAngleDeg();
-        while (error > 180) error -= 360;
-        while (error <= -180) error += 360;
-
-        double dt = Math.max(intakePidTimer.seconds(), 0.02);
-        intakePidTimer.reset();
+        if (error < 0) {
+            error += 360; // Force the motor to find the target by spinning forward
+        }
+        double dt = Math.max(pidTimer.seconds(), 0.02);
+        pidTimer.reset();
 
         // 1. Get current voltage
         double currentVoltage = batteryVoltageSensor.getVoltage();
@@ -1313,15 +1248,15 @@ public class SpinOnUrOwn extends OpMode {
 // We use Math.max to prevent division by zero just in case
         double voltageComp = 12.0 / Math.max(currentVoltage, 1.0);
 
-        double derivative = (error - intakeLastError) / dt;
+        double derivative = (error - lastError) / dt;
         double power = (error * kP) + (derivative * kD);
-        intakeLastError = error;
+        lastError = error;
 
         // Cap the power so it doesn't go crazy
         power = Math.max(-0.3, Math.min(0.3, power));
         double minPower = 0.15; // Minimum power to overcome friction
 
-        if (Math.abs(error) > PositionToleranceDeg) {
+        if (error > PositionToleranceDeg) {
             double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
             spindexer.setPower(finalPower * voltageComp);
         } else {
@@ -1331,11 +1266,181 @@ public class SpinOnUrOwn extends OpMode {
 
     boolean spindexerAtTarget(double target) {
         double error = target - getSpindexerAngleDeg();
-        
-        while (error > 180) error -= 360;
-        while (error <= -180) error += 360;
-        
-        return Math.abs(error) < PositionToleranceDeg;
+        if (error < 0) error += 360;
+        return error < PositionToleranceDeg;
+    }
+
+    public void scan()
+    {
+        NormalizedRGBA in2Pos = colorBack.getNormalizedColors();
+        NormalizedRGBA in0Pos = color0.getNormalizedColors();
+        NormalizedRGBA in1Pos = color1.getNormalizedColors();
+
+        if (in0Pos.blue > 0.001 && in0Pos.blue > in0Pos.green)
+        {
+            scanResults[0] = "purple";
+        }
+        else if (in0Pos.green>0.0013)
+        {
+            scanResults[0] = "green";
+        }
+        else {
+            scanResults[0] = "open";
+        }
+
+        if (in1Pos.blue > 0.001 && in1Pos.blue > in1Pos.green)
+        {
+            scanResults[1] = "purple";
+        }
+        else if (in1Pos.green > 0.0013)
+        {
+            scanResults[1] = "green";
+        }
+        else {
+            scanResults[1] = "open";
+        }
+
+        if (in2Pos.blue > 0.0012 && in2Pos.blue > in2Pos.green)
+        {
+            scanResults[2] = "purple";
+        }
+        else if (in2Pos.green > 0.0013)
+        {
+            scanResults[2] = "green";
+        }
+        else {
+            scanResults[2] = "open";
+        }
+
+
+        telemetry.addData("scan results: ",scanResults[0] + ", " + scanResults[1] + ", " + scanResults[2]);
+        telemetry.update();
+
+
+    }
+    private void goShoot()
+    {
+        double currentSPos = getSpindexerAngleDeg();
+        long stepTime = System.currentTimeMillis() - sequenceStartTime;
+
+        switch (shootStep) {
+            case -1: // NEW: INITIAL DECISION
+                currentShootSlot = getClosestShootSlot();
+                shootStep = 0;
+                sequenceStartTime = System.currentTimeMillis();
+                break;
+
+            case 0: // ALIGNING
+                double targetSPos = shootSlotPositions[currentShootSlot];
+                double error = targetSPos - currentSPos;
+                if (error < 0) error += 360;
+
+                double dt = pidTimer.seconds();
+                pidTimer.reset();
+                double voltageComp = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
+                double derivative = (error - lastError) / dt;
+                double power = (error * kP) + (derivative * kD);
+                lastError = error;
+
+                power = Math.max(-0.5, Math.min(0.5, power));
+
+                if (needScan)
+                {
+                    if (error > PositionToleranceDeg) {
+                        spindexer.setPower(power * voltageComp);
+                        sequenceStartTime = System.currentTimeMillis();
+                    } else {
+                        spindexer.setPower(0);
+                        scan();
+                        if (stepTime >= 50) {
+                            shootStep = 1;
+                            sequenceStartTime = System.currentTimeMillis();
+                            emptySlotCounter = 0;
+                        }
+                    }
+                }
+                else {
+                    shootStep = 1;
+                    sequenceStartTime = System.currentTimeMillis();
+                }
+
+
+                break;
+
+            case 1: // CHECK FOR BALL
+                slot0Valid = false;
+                slot1Valid = false;
+                slot2Valid = false;
+
+                    slot2Valid = scanResults[2].equals(targetColorMode);
+                    slot0Valid = scanResults[0].equals(targetColorMode);
+                    slot1Valid = scanResults[1].equals(targetColorMode);
+                double tPos = -1;
+                if (slot2Valid)
+                {
+
+                    tPos = shootSlotPositions[currentShootSlot];
+                }
+                else if (slot0Valid)
+                {
+                    tPos = shootSlotPositions[(currentShootSlot + 1) % shootSlotPositions.length];
+
+                }
+                else if (slot1Valid)
+                {
+                    tPos = shootSlotPositions[(currentShootSlot + 2) % shootSlotPositions.length];
+                }
+                else {
+                    //all slots open
+                    shootStep = 0;
+                    sequenceStartTime = System.currentTimeMillis();
+                }
+                if (tPos !=- 1)
+                {
+                    double err = tPos - currentSPos;
+                    if (err < 0) err += 360;
+
+                    double timeee = pidTimer.seconds();
+                    pidTimer.reset();
+                    double voltage = 12.0 / Math.max(batteryVoltageSensor.getVoltage(), 1.0);
+                    double deriv = (err - sLastError) / timeee;
+                    double pow = (err * kP) + (deriv * kD);
+                    sLastError = err;
+                    pow = Math.max(-0.5, Math.min(0.5, pow));
+
+                    if (err > PositionToleranceDeg) {
+                        spindexer.setPower(pow * voltage);
+                        sequenceStartTime = System.currentTimeMillis();
+                    } else {
+                        spindexer.setPower(0);
+                        if (stepTime >= 40) { // Wait for settle
+                            shootStep = 2;
+                            sequenceStartTime = System.currentTimeMillis();
+                            emptySlotCounter = 0;
+                        }
+                    }
+                }
+                break;
+
+            case 2: // POP UP
+                popUp.setPosition(0.4);
+                if (stepTime >= 300) {
+                    shootStep = 3;
+                    sequenceStartTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 3: // RETRACT & PREPARE NEXT
+                needScan = false;
+                popUp.setPosition(0);
+                // START MOVING TO NEXT SLOT WHILE RETRACTING
+                if (stepTime >= 150) {
+                    currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
+                    shootStep = 0;
+                    sequenceStartTime = System.currentTimeMillis();
+                }
+                break;
+        }
     }
 
 }
