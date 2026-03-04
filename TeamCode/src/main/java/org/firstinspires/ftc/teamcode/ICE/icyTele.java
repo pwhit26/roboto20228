@@ -1,5 +1,9 @@
 package org.firstinspires.ftc.teamcode.ICE;
 
+import static com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER;
+import static com.qualcomm.robotcore.hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER;
+import static org.firstinspires.ftc.teamcode.PoseStorage.lastPose;
+
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.qualcomm.hardware.limelightvision.LLResult;
@@ -16,9 +20,11 @@ import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.PoseStorage;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.TurretMath;
 
 import java.util.List;
 
@@ -62,8 +68,8 @@ public class icyTele extends LinearOpMode {
     static final int numIntakeSlots = 3;
     int[] intakeSlotPositions = {110, 230, 355};
     int[] shootSlotPositions = {65, 190, 305};
-    static final double kP = 0.0155; // Start small
-    static final double kD = 0.0008; // Helps prevent overshoot
+    static final double kP = 0.023; // Start small 0.018 original
+    static final double kD = 0.0009; // Helps prevent overshoot 0.0009 original
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
@@ -80,26 +86,64 @@ public class icyTele extends LinearOpMode {
     boolean pastCheck;
     private Follower poseUpdater;
     private Follower drive;
-    private final Pose GOAL_POSE = new Pose(72, 36);
+    private final Pose GOAL_POSE = new Pose(66, 72); // blue goal location (72,72), red goal is (72, -72)
     private double lastTurretAngleDeg = 0;
     String[] scanResults = {"open", "open", "open"};
     boolean needScan = true;
     double sLastError = 0;
     private int intakeConfirmCounter = 0;
     private static final int INTAKE_CONFIRM_THRESHOLD = 4;
+    double MIN_TURRET_ANGLE = -90;
+    double MAX_TURRET_ANGLE = 90;
     private boolean slot0Valid = false;
     private boolean slot1Valid = false;
     private boolean slot2Valid = false;
     String targetColorMode = "all";
     private boolean goShoot = false;
+    private double filteredTargetAngle = 0;
+    private double turretZeroOffsetDeg = 0;
+    static final double TICKS_PER_REV = 753.2; // example motor
+    static final double GEAR_RATIO = 1.5;      // turret gearing
+    static final double TICKS_PER_RAD =
+            (TICKS_PER_REV * GEAR_RATIO) / (2 * Math.PI);
+    double limelightCorrectionRad = 0;
+    static final double TURRET_ZERO_OFFSET_DEG = 0;
+    static final double MAX_LL_CORRECTION_RAD = Math.toRadians(6);
+    Pose lastPose = null;
+    double lastTime = 0;
+
+    double robotVX = 0; // field velocity X (units/sec)
+    double robotVY = 0; // field velocity Y
+
+    static final double SHOT_TIME = 0.18; // tune later
+    static final double DIST_TO_GOAL = 36; // inches (approx)
     int ballPresentCounter = 0;
     static final int BALL_PRESENT_THRESHOLD = 5;
+    double filteredVX = 0;
+    double filteredVY = 0;
+    static final double HEADING_GAIN = 0.96;
+    double turretTargetRad = 0;
+    double distance = 0;
+    int settleCounter = 0;
+    boolean yLast = false;
+    boolean intakeActive = false;
+    static final int SETTLE_THRESHOLD = 4;
+    static final double MIN_DT = 0.01;
+    static final double CURRENT_THRESHOLD = 3.5;
+    static final int CURRENT_CONFIRM_LOOPS = 3;
+    double positionDeadband = 1.2;     // Degrees — tiny buffer to prevent jitter skip
+    double velocityDeadband = 5;       // deg/sec — must be basically stopped
+    double minMoveThreshold = 0.8;     // ignore tiny encoder noise
+    double lastPosition = 0;
+
+
+
 
 
 
     Servo angleTurret0, angleTurret1, popUp;
     DcMotorEx turret, intake, frontRight, frontLeft, backRight, backLeft, spindexer, turnTurret;
-    boolean xLast, bLast, yLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
+    boolean xLast, bLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -130,7 +174,7 @@ public class icyTele extends LinearOpMode {
 
         // Follower after constants are set
         follower = Constants.createFollower(hardwareMap); //Haolin was here lol
-        follower.setStartingPose(startPose);
+
 
         //other motor init
         intake = hardwareMap.get(DcMotorEx.class,"intake");
@@ -142,7 +186,12 @@ public class icyTele extends LinearOpMode {
         turret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1);
         turnTurret = hardwareMap.get(DcMotorEx.class, "turnTurret");
         turnTurret.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        turnTurret.setVelocityPIDFCoefficients(0.05, 0, 0.001, 12.1); // Put in actual numbers these are placeholders
+        turnTurret.setDirection(DcMotorSimple.Direction.REVERSE);
+        turnTurret.setMode(STOP_AND_RESET_ENCODER);
+        turnTurret.setTargetPosition(0);
+        turnTurret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        turnTurret.setPower(0.9);
+        turnTurret.setVelocityPIDFCoefficients(10, 0, 0.4, 12); // Put in actual numbers these are placeholders
         spindexer = hardwareMap.get(DcMotorEx.class, "spindexer");
         spindexer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         //spindexer.setTargetPosition(0);
@@ -169,10 +218,28 @@ public class icyTele extends LinearOpMode {
         } else {
             telemetry.addData("Limelight", "Not found in hardware map!");
         }
+        while (!isStarted() && !isStopRequested())
+        {
+            if (gamepad1.dpad_left) {
+                lastPose = new Pose(0, 0, Math.toRadians(0));
+                sleep(200);
+            }
+            if (gamepad1.dpad_right) {
+                lastPose = new Pose(60, 60, Math.toRadians(0));
+            }
+        }
+        follower.setStartingPose(lastPose);
+        telemetry.addData("Robot X", lastPose.getX());
+        telemetry.addData("Robot Y", lastPose.getY());
+        telemetry.addData("TurretCmd", lastPose.getHeading());
+        telemetry.update();
 
         waitForStart();
+        turretZeroOffsetDeg = getRawTurretAngleDeg();
+        filteredTargetAngle = 0;
 
-        follower.startTeleopDrive();
+
+        //follower.startTeleopDrive();
         runtime.reset();
         while (opModeIsActive()) {
             //BASE TELE W RED LIMELIGHT
@@ -195,6 +262,66 @@ public class icyTele extends LinearOpMode {
             frontRight.setPower(rightFrontPower);
             backRight.setPower(rightRearPower);
 
+            follower.update(); // update localization
+
+            //applyVisionHeadingCorrection();
+
+            Pose currentPose = follower.getPose();
+
+            double currentTime = getRuntime();
+
+            if (lastPose != null) {
+                double dt = currentTime - lastTime;
+
+                if (dt > 0.001) {
+                    robotVX = (currentPose.getX() - lastPose.getX()) / dt;
+                    robotVY = (currentPose.getY() - lastPose.getY()) / dt;
+                }
+            }
+
+            lastPose = currentPose;
+            lastTime = currentTime;
+
+            double alpha = 0.2; // smoothing (0.1–0.3 good)
+
+            filteredVX += alpha * (robotVX - filteredVX);
+            filteredVY += alpha * (robotVY - filteredVY);
+
+
+
+
+            //Pose currentPose = follower.getPose();
+
+            double robotX = currentPose.getX();
+            double robotY = currentPose.getY();
+            double robotHeadingDeg = currentPose.getHeading();
+            double targetX = GOAL_POSE.getX();
+            double targetY = GOAL_POSE.getY();
+            aimTurretAt(targetX, targetY);
+
+            /*double fieldAngle =
+                    TurretMath.angleToPoint(robotX, robotY, targetX, targetY);
+
+            double turretTargetAngle =
+                    TurretMath.angleWrap(fieldAngle - robotHeadingDeg);
+
+
+            int targetTicks = (int)(turretTargetAngle * TICKS_PER_RAD);
+
+
+
+            turnTurret.setTargetPosition(targetTicks);
+            turnTurret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            turnTurret.setPower(0.6);*/
+            /*double turretAngle = alignTurret(
+                    robotX,
+                    robotY,
+                    robotHeadingDeg,
+                    GOAL_POSE
+            );
+
+            spinnyTurretAngleThingy(turretAngle);*/
+
             if (limelight != null) {
                 LLResult ll = limelight.getLatestResult();
                 telemetry.addData("Limelight", "Got result: %s", ll != null ? "Valid" : "Null");
@@ -202,28 +329,49 @@ public class icyTele extends LinearOpMode {
 
                 if (ll != null) {
                     List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
+                    boolean correctTagSeen = false;
 
                     for (LLResultTypes.FiducialResult fr : fiducials) {
                         long tagId = fr.getFiducialId();
                         telemetry.addData("Detected Tag", tagId);
 
                         if (tagId == 20) {
+                            correctTagSeen = true;
                             Id = tagId;
                             targetTag = fr;
+
+                            /*double txRad = Math.toRadians(ll.getTx());
+
+                            double correctionSpeed = 0.02;
+                            turretZeroOffsetDeg -= Math.toDegrees(txRad) * correctionSpeed;
+                            turretTargetRad += txRad * 0.1;*/
                             break; // stop once we found red goal
                         }
                     }
-                    if (targetTag != null && Id == 20) {
+                   /* if (!correctTagSeen)
+                    {
+                        turretZeroOffsetDeg *= 0.95;
+                    }*/
+                    if (targetTag != null && ll.isValid()) {
                         boolean isValid = ll.isValid();
                         double tx = ll.getTx();
+                        double txRad = Math.toRadians(tx);
+                       /* if (Math.abs(txRad) < Math.toRadians(0.25)) txRad = 0;
+                        limelightCorrectionRad =
+                                0.85 * limelightCorrectionRad +
+                                        0.15 * txRad;*/
+
                         double ty = ll.getTy();
                         double ta = ll.getTa();
                         txDeg = tx;
                         tyDeg = ty;
 
 
+
+
                         double dist = calculateDistance(ty, tx);
-                        angleAdjust(tx, dist);
+                        distance = dist;
+
                         setTurretAngle(dist);
                         if (gamepad1.b) {
                             setTurretVelocity(dist); //not sure if i didnt fuck this up sorry
@@ -236,6 +384,7 @@ public class icyTele extends LinearOpMode {
                         telemetry.addData("TX/TY/TA", "%.2f / %.2f / %.2f", tx, ty, ta);
                         telemetry.addData("Distance from Apriltag/Angle 0/Angle1:", "%.2f / %.2f / %.2f", dist, angleTurret0.getPosition(), angleTurret1.getPosition());
                     } else {
+                        limelightCorrectionRad *= 0.75;
                         if (gamepad1.b) {
                             turret.setVelocity(1500);
                         } else {
@@ -247,21 +396,18 @@ public class icyTele extends LinearOpMode {
                 }
             }
 
-            if (gamepad2.left_bumper)
-            {
-                turnTurret.setPower(-0.3);
-            }
-            else if (gamepad2.right_bumper)
-            {
-                turnTurret.setPower(0.3);
-            }
-            else {
-
-            }
-
 
             //Intake Macro
             // --- Inside your while(opModeIsActive) loop ---
+
+            /*if (gamepad1.a && !gamepad1.y && !gamepad1.left_bumper)
+            {
+                intake.setDirection(DcMotorSimple.Direction.REVERSE);
+                intake.setPower(1);
+            }
+            else {
+                intake.setDirection(DcMotorSimple.Direction.FORWARD);
+            }*/
 
             if (gamepad1.y) {
                 double currentPos = getSpindexerAngleDeg();
@@ -269,11 +415,10 @@ public class icyTele extends LinearOpMode {
                 long stepTime = System.currentTimeMillis() - sequenceStartTime;
 
 
-                // 1. Calculate Forward Distance (to ensure it only spins one way)
+                // 1. Calculate Forwards Distance (to ensure it only spins one way)
                 double error = targetPos - currentPos;
-                if (error < 0) {
-                    error += 360; // Force the motor to find the target by spinning forward
-                }
+                while (error > 180) error -= 360;
+                while (error <= -180) error += 360;
 
                 switch (intakeStep) {
                     case -1: // INITIAL DECISION (Lazy Logic)
@@ -302,14 +447,14 @@ public class icyTele extends LinearOpMode {
                         power = Math.max(-0.5, Math.min(0.5, power));
                         double minPower = 0.15; // Minimum power to overcome friction
 
-                        if (error > PositionToleranceDeg) {
+                        if (Math.abs(error) > PositionToleranceDeg) {
                             double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
                             spindexer.setPower(finalPower * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
                             // Wait for settle before turning on the intake motor
-                            if (stepTime >= 40) {
+                            if (stepTime >= 10) {
                                 intakeStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                             }
@@ -347,9 +492,15 @@ public class icyTele extends LinearOpMode {
 
                         break;
                 }
-            } else if (gamepad1.left_bumper && !gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right)
+            }
+
+            else if (gamepad1.left_bumper && !gamepad1.y && !gamepad1.a)
             {
                 intake.setPower(0.8);
+            }
+            else if (gamepad1.a && !gamepad1.y && !gamepad1.left_bumper)
+            {
+                intake.setPower(-0.8);
             }
             else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.left_bumper){
                 // Reset logic when button is released
@@ -397,7 +548,8 @@ public class icyTele extends LinearOpMode {
                     case 0: // ALIGNING
                         double targetSPos = shootSlotPositions[currentShootSlot];
                         double error = targetSPos - currentSPos;
-                        if (error < 0) error += 360;
+                        while (error > 180) error -= 360;
+                        while (error <= -180) error += 360;
 
                         double dt = pidTimer.seconds();
                         pidTimer.reset();
@@ -406,17 +558,17 @@ public class icyTele extends LinearOpMode {
                         double power = (error * kP) + (derivative * kD);
                         lastError = error;
 
-                        power = Math.max(-0.5, Math.min(0.5, power));
+                        power = Math.max(-0.7, Math.min(0.7, power));
 
                         if (needScan)
                         {
-                            if (error > PositionToleranceDeg) {
+                            if (Math.abs(error) > PositionToleranceDeg) {
                                 spindexer.setPower(power * voltageComp);
                                 sequenceStartTime = System.currentTimeMillis();
                             } else {
                                 spindexer.setPower(0);
                                 scan();
-                                if (stepTime >= 50) {
+                                if (stepTime >= 5) {
                                     shootStep = 1;
                                     sequenceStartTime = System.currentTimeMillis();
                                     emptySlotCounter = 0;
@@ -470,7 +622,8 @@ public class icyTele extends LinearOpMode {
                         if (tPos !=- 1)
                         {
                             double err = tPos - currentSPos;
-                            if (err < 0) err += 360;
+                            while (err > 180) err -= 360;
+                            while (err <= -180) err += 360;
 
                             double timeee = pidTimer.seconds();
                             pidTimer.reset();
@@ -478,14 +631,14 @@ public class icyTele extends LinearOpMode {
                             double deriv = (err - sLastError) / timeee;
                             double pow = (err * kP) + (deriv * kD);
                             sLastError = err;
-                            pow = Math.max(-0.5, Math.min(0.5, pow));
+                            pow = Math.max(-0.7, Math.min(0.7, pow));
 
-                            if (err > PositionToleranceDeg) {
+                            if (Math.abs(err) > PositionToleranceDeg) {
                                 spindexer.setPower(pow * voltage);
                                 sequenceStartTime = System.currentTimeMillis();
                             } else {
                                 spindexer.setPower(0);
-                                if (stepTime >= 40) { // Wait for settle
+                                if (stepTime >= 5) { // Wait for settle
                                     shootStep = 2;
                                     sequenceStartTime = System.currentTimeMillis();
                                     emptySlotCounter = 0;
@@ -496,7 +649,7 @@ public class icyTele extends LinearOpMode {
 
                     case 2: // POP UP
                         popUp.setPosition(0.4);
-                        if (stepTime >= 300) {
+                        if (stepTime >= 225) {
                             shootStep = 3;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -521,6 +674,14 @@ public class icyTele extends LinearOpMode {
                 popUp.setPosition(0);
                 needScan = true;
             }
+
+
+            telemetry.addData("Robot X", currentPose.getX());
+            telemetry.addData("Robot Y", currentPose.getY());
+            telemetry.addData("turret ticks", turnTurret.getCurrentPosition());
+            //telemetry.addData("TurretCmd", turretAngle);
+            //telemetry.addData("TurretActual", getTurretAngleDeg());
+            telemetry.update();
 
 
 
@@ -571,6 +732,7 @@ public class icyTele extends LinearOpMode {
     }
     private void angleAdjust(double tx, double dist)
     {
+
         if (Id == 20)
         {
             if (dist > 2.2 && dist<2.9)
@@ -649,8 +811,8 @@ public class icyTele extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1367.6*(Math.pow(dist, 0.19183)) + 70;//0.173 original
-        if (dist<=1.2)
+        double velocity = 1238.6953*(Math.pow(dist, 0.35233));//0.173 original
+        /*if (dist<=1.2)
         {
             velocity = velocity +35;
         }
@@ -669,7 +831,7 @@ public class icyTele extends LinearOpMode {
         }
         if (dist >=2.2 && dist<2.9)
         {
-            velocity = velocity + 15;
+            velocity = velocity + 5;
         }
         if (dist>3)
         {
@@ -679,7 +841,7 @@ public class icyTele extends LinearOpMode {
         if (gamepad1.right_bumper)
         {
             velocity = velocity + 75;
-        }
+        }*/
 
 
 
@@ -825,14 +987,15 @@ public class icyTele extends LinearOpMode {
     private int getClosestShootSlot() {
         double currentPos = getSpindexerAngleDeg();
         int bestSlot = 0;
-        double minForwardDistance = 400;
+        double minDistance = 400;
 
         for (int i = 0; i < shootSlotPositions.length; i++) {
             double distance = shootSlotPositions[i] - currentPos;
-            if (distance < 0) distance += 360; // Forward only
+            while (distance > 180) distance -= 360;
+            while (distance <= -180) distance += 360;
 
-            if (distance < minForwardDistance) {
-                minForwardDistance = distance;
+            if (Math.abs(distance) < minDistance) {
+                minDistance = Math.abs(distance);
                 bestSlot = i;
             }
         }
@@ -841,61 +1004,92 @@ public class icyTele extends LinearOpMode {
     private int getClosestForwardSlot() {
         double currentPos = getSpindexerAngleDeg();
         int bestSlot = currentSlot;
-        double minForwardDistance = 400; // Larger than 360
+        double minDistance = 400;
 
         for (int i = 0; i < intakeSlotPositions.length; i++) {
             double distance = intakeSlotPositions[i] - currentPos;
+            while (distance > 180) distance -= 360;
+            while (distance <= -180) distance += 360;
 
-            // If the distance is negative, it means the slot is "behind" us.
-            // We add 360 to find the distance to reach it by spinning forward.
-            if (distance < 0) {
-                distance += 360;
-            }
-
-            if (distance < minForwardDistance) {
-                minForwardDistance = distance;
+            if (Math.abs(distance) < minDistance) {
+                minDistance = Math.abs(distance);
                 bestSlot = i;
             }
         }
         return bestSlot;
     }
-    private double alignTurret(double x, double y, double heading, Pose target)
+   /* public double alignTurret(
+            double robotX,
+            double robotY,
+            double robotHeadingDeg,
+            Pose goalPose)
     {
-        double dx = target.getX() - x;
-        double dy = target.getY() - y;
-        double angleToGoal = Math.toDegrees(Math.atan2(dy, dx));
-        double turretAngle = -(angleToGoal - heading);
+        double dx = goalPose.getX() - robotX;
+        double dy = goalPose.getY() - robotY;
 
-        while (turretAngle>180) turretAngle -=360;
-        while (turretAngle<-180) turretAngle +=360;
+        double angleToGoalField = Math.toDegrees(Math.atan2(dy, dx));
 
-        double diff = turretAngle - lastTurretAngleDeg;
-        if (diff > 90)
-        {
-            turretAngle -=360;
-        }
-        else if (diff < -90)
-        {
-            turretAngle +=360;
-        }
+        // convert field angle → robot-relative turret angle
+        double targetAngle = angleToGoalField + robotHeadingDeg;
 
-        while (turretAngle>180) turretAngle -=360;
-        while (turretAngle<-180) turretAngle +=360;
-
-        lastTurretAngleDeg = turretAngle;
-        return turretAngle;
+        return normalizeAngle(targetAngle);
     }
-    public void spinnyTurretAngleThingy(double turretAngle)
+    double normalizeAngle(double angle){
+        while(angle > 180) angle -= 360;
+        while(angle < -180) angle += 360;
+        return angle;
+    }
+
+
+
+    public void spinnyTurretAngleThingy(double rawTargetAngleDeg)
     {
-        if (turretAngle > 4)
+
+
+
+        double currentAngle = getTurretAngleDeg();
+
+        double targetAngleDeg = Math.max(MIN_TURRET_ANGLE,
+                Math.min(MAX_TURRET_ANGLE, rawTargetAngleDeg));
+        // Smooth the target
+        double alpha = 0.15;  // 0.1–0.2 is good
+        filteredTargetAngle += alpha * (targetAngleDeg - filteredTargetAngle);
+
+        double errorDeg = angleError(filteredTargetAngle, currentAngle);
+
+
+        double kP = 10.0;     // Lower than before
+        double kD = 0.9;      // Stronger derivative
+
+        double currentVelDegPerSec =
+                turnTurret.getVelocity() / (753.2 * 4 / 360.0);
+
+        double outputDegPerSec =
+                (kP * errorDeg) - (kD * currentVelDegPerSec);
+
+        double ticksPerDeg = (753.2 * 4) / 360.0;
+
+        double velocityTicksPerSec = outputDegPerSec * ticksPerDeg;
+
+        velocityTicksPerSec = Math.max(-1200, Math.min(1200, velocityTicksPerSec));
+
+        if (Math.abs(errorDeg) > 1.5 && Math.abs(velocityTicksPerSec) < 150)
         {
-            turnTurret.setVelocity(900);
+            velocityTicksPerSec = 150 * Math.signum(errorDeg);
         }
-        else if (turretAngle < -2)
-        {
-            turnTurret.setVelocity(-900);
-        }
-    }
+
+
+        turnTurret.setVelocity(velocityTicksPerSec);
+
+        telemetry.addData("Turret Target", targetAngleDeg);
+        telemetry.addData("Turret Current", currentAngle);
+        telemetry.addData("Turret Error", errorDeg);
+        telemetry.addData("Turret Velocity Cmd", velocityTicksPerSec);
+    }*/
+
+
+
+
     public void scan()
     {
         NormalizedRGBA in2Pos = colorBack.getNormalizedColors();
@@ -944,6 +1138,25 @@ public class icyTele extends LinearOpMode {
 
 
     }
+
+    double getRawTurretAngleDeg() {
+        double ticks = turnTurret.getCurrentPosition();
+        double ticksPerRev = TICKS_PER_REV * GEAR_RATIO;
+        return (ticks / ticksPerRev) * 360.0;
+    }
+
+    double getTurretAngleDeg() {
+        double angle = getRawTurretAngleDeg() - turretZeroOffsetDeg;
+
+        angle %= 360;
+        if (angle > 180) angle -= 360;
+        if (angle < -180) angle += 360;
+
+        return angle;
+    }
+
+
+
     /*private int getClosestOpenForwardSlot() {
         double currentPos = getSpindexerAngleDeg();
         int bestSlot = -1;
@@ -981,6 +1194,104 @@ public class icyTele extends LinearOpMode {
         return false;
     }*/
 
+    public void aimTurretAt(double targetX, double targetY) {
+        Pose pose = follower.getPose();
+        double robotX = pose.getX();
+        double robotY = pose.getY();
+        double robotHeadingRad = pose.getHeading();
+
+        // Vector to target (pose-based)
+        double dx = targetX - robotX;
+        double dy = targetY - robotY;
+
+        // Field-relative angle to target
+        double fieldAngleRad = Math.atan2(dy, dx);
+
+        // Robot-relative turret angle (based on pose)
+        double turretTargetRad = fieldAngleRad - robotHeadingRad;
+
+        // Motion prediction for moving robot
+        double distanceToGoal = Math.hypot(dx, dy);
+        double tangentialVelocity = -robotVY * Math.cos(fieldAngleRad) + robotVX * Math.sin(fieldAngleRad);
+        double leadAngle = Math.atan2(tangentialVelocity * SHOT_TIME, distanceToGoal);
+        turretTargetRad += leadAngle;
+
+        // ----- Limelight correction (only apply if correct tag seen) -----
+        if (limelight != null) {
+            LLResult ll = limelight.getLatestResult();
+            if (ll != null && ll.isValid()) {
+                List<LLResultTypes.FiducialResult> fiducials = ll.getFiducialResults();
+
+                boolean correctTagSeen = false;
+                for (LLResultTypes.FiducialResult fr : fiducials) {
+                    long tagId = fr.getFiducialId();
+                    // Only apply if this is our blue goal tag
+                    if (tagId == 20) {
+                        correctTagSeen = true;
+                        double txRad = Math.toRadians(ll.getTx());
+
+
+                        // Smoothly nudge zero offset
+                        double correctionSpeed = 0.05; // smaller = smoother
+                        turretZeroOffsetDeg -= Math.toDegrees(txRad) * correctionSpeed;
+
+                        // Optional small immediate nudge to target angle
+                        turretTargetRad += txRad * 0.1;
+                        break;
+                    }
+                }
+
+                if (!correctTagSeen) {
+                    // Slowly decay previous correction so wrong tags don't mess it up
+                    turretZeroOffsetDeg *= 0.95;
+                }
+
+                // Clamp zero offset to reasonable bounds
+                turretZeroOffsetDeg = Range.clip(turretZeroOffsetDeg, -10, 10);
+            }
+        }
+
+        // Normalize angle to -π..π
+        turretTargetRad = Math.atan2(Math.sin(turretTargetRad), Math.cos(turretTargetRad));
+
+        // Convert to degrees
+        double turretTargetDeg = Math.toDegrees(turretTargetRad);
+
+        // Apply zero offset
+        turretTargetDeg += turretZeroOffsetDeg + 2 ;
+
+        if (distance>=2.4)
+        {
+            turretTargetDeg += 2;
+        }
+
+
+        // Clamp to physical limits
+        turretTargetDeg = Range.clip(turretTargetDeg, MIN_TURRET_ANGLE, MAX_TURRET_ANGLE);
+
+        // Convert to motor ticks
+        int targetTicks = (int)(Math.toRadians(turretTargetDeg) * TICKS_PER_RAD);
+
+        // Command turret
+        turnTurret.setTargetPosition(targetTicks);
+        turnTurret.setPower(0.6);
+
+        // Telemetry for debugging
+        telemetry.addData("Turret Target Deg", turretTargetDeg);
+        telemetry.addData("Zero Offset", turretZeroOffsetDeg);
+        telemetry.addData("Distance to Goal", distanceToGoal);
+        telemetry.update();
+    }
+
+
+
+
+
+
+
 
 }
+
+
+
 
