@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.ICE;
+package org.firstinspires.ftc.teamcode;
 
 import static com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER;
 import static com.qualcomm.robotcore.hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER;
@@ -29,7 +29,7 @@ import org.firstinspires.ftc.teamcode.TurretMath;
 import java.util.List;
 
 @TeleOp
-public class icyTele extends LinearOpMode {
+public class SeanTele extends LinearOpMode {
     private Follower follower;
     private static final double MIN_COLOR_THRESHOLD = 0.5; // 50% of total area
     private boolean wasColorDetected = false;
@@ -68,8 +68,8 @@ public class icyTele extends LinearOpMode {
     static final int numIntakeSlots = 3;
     int[] intakeSlotPositions = {110, 230, 355};
     int[] shootSlotPositions = {65, 190, 305};
-    static final double kP = 0.023; // Start small 0.018 original
-    static final double kD = 0.0009; // Helps prevent overshoot 0.0009 original
+    static final double kP = 0.013; // Start small 0.0155 original
+    static final double kD = 0.001; // Helps prevent overshoot 0.0008 original
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
@@ -220,17 +220,13 @@ public class icyTele extends LinearOpMode {
         }
         while (!isStarted() && !isStopRequested())
         {
-            if (gamepad1.dpad_left) {
-                lastPose = new Pose(-72, 24, Math.toRadians(0));
+            if (gamepad2.dpad_left) {
+                lastPose = new Pose(0, 0, Math.toRadians(0));
                 sleep(200);
             }
-            else if (gamepad1.dpad_right) {
+            if (gamepad2.dpad_right) {
                 lastPose = new Pose(60, 60, Math.toRadians(0));
             }
-            else {
-                lastPose = new Pose(-72, 24, Math.toRadians(0));
-            }
-
         }
         follower.setStartingPose(lastPose);
         telemetry.addData("Robot X", lastPose.getX());
@@ -377,7 +373,7 @@ public class icyTele extends LinearOpMode {
                         distance = dist;
 
                         setTurretAngle(dist);
-                        if (gamepad1.b) {
+                        if (gamepad2.b) {
                             setTurretVelocity(dist); //not sure if i didnt fuck this up sorry
                         } else {
                             turret.setVelocity(800);
@@ -389,7 +385,7 @@ public class icyTele extends LinearOpMode {
                         telemetry.addData("Distance from Apriltag/Angle 0/Angle1:", "%.2f / %.2f / %.2f", dist, angleTurret0.getPosition(), angleTurret1.getPosition());
                     } else {
                         limelightCorrectionRad *= 0.75;
-                        if (gamepad1.b) {
+                        if (gamepad2.b) {
                             turret.setVelocity(1500);
                         } else {
                             turret.setVelocity(800);
@@ -404,25 +400,26 @@ public class icyTele extends LinearOpMode {
             //Intake Macro
             // --- Inside your while(opModeIsActive) loop ---
 
-            /*if (gamepad1.a && !gamepad1.y && !gamepad1.left_bumper)
+            if (gamepad2.a)
             {
                 intake.setDirection(DcMotorSimple.Direction.REVERSE);
                 intake.setPower(1);
             }
             else {
                 intake.setDirection(DcMotorSimple.Direction.FORWARD);
-            }*/
+            }
 
-            if (gamepad1.y) {
+            if (gamepad2.y) {
                 double currentPos = getSpindexerAngleDeg();
                 double targetPos = intakeSlotPositions[currentSlot];
                 long stepTime = System.currentTimeMillis() - sequenceStartTime;
 
 
-                // 1. Calculate Forwards Distance (to ensure it only spins one way)
+                // 1. Calculate Forward Distance (to ensure it only spins one way)
                 double error = targetPos - currentPos;
-                while (error > 180) error -= 360;
-                while (error <= -180) error += 360;
+                if (error < 0) {
+                    error += 360; // Force the motor to find the target by spinning forward
+                }
 
                 switch (intakeStep) {
                     case -1: // INITIAL DECISION (Lazy Logic)
@@ -451,14 +448,14 @@ public class icyTele extends LinearOpMode {
                         power = Math.max(-0.5, Math.min(0.5, power));
                         double minPower = 0.15; // Minimum power to overcome friction
 
-                        if (Math.abs(error) > PositionToleranceDeg) {
+                        if (error > PositionToleranceDeg) {
                             double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
                             spindexer.setPower(finalPower * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
                             // Wait for settle before turning on the intake motor
-                            if (stepTime >= 10) {
+                            if (stepTime >= 40) {
                                 intakeStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
                             }
@@ -498,15 +495,11 @@ public class icyTele extends LinearOpMode {
                 }
             }
 
-            else if (gamepad1.left_bumper && !gamepad1.y && !gamepad1.a)
+            else if (gamepad2.left_bumper && !gamepad2.y && !gamepad2.right_bumper && !gamepad2.dpad_left && !gamepad2.dpad_right)
             {
                 intake.setPower(0.8);
             }
-            else if (gamepad1.a && !gamepad1.y && !gamepad1.left_bumper)
-            {
-                intake.setPower(-0.8);
-            }
-            else if (!gamepad1.y && !gamepad1.right_bumper && !gamepad1.dpad_left && !gamepad1.dpad_right && !gamepad1.left_bumper){
+            else if (!gamepad2.y && !gamepad2.right_bumper && !gamepad2.dpad_left && !gamepad2.dpad_right && !gamepad2.left_bumper){
                 // Reset logic when button is released
                 spindexer.setPower(0);
                 intake.setPower(0);
@@ -516,26 +509,15 @@ public class icyTele extends LinearOpMode {
             telemetry.addData("intake", intakeStep);
             telemetry.update();
 
-            if (gamepad1.right_bumper)
+            if (gamepad2.right_bumper)
             {
                 targetColorMode = "all";
                 goShoot = true;
 
             }
-            else if (gamepad1.dpad_left)
-            {
-                targetColorMode = "green";
-                goShoot = true;
-            }
-            else if (gamepad1.dpad_right)
-            {
-                targetColorMode = "purple";
-                goShoot = true;
-            }
             else {
                 goShoot = false;
             }
-
 
             if (goShoot)
             {
@@ -552,8 +534,7 @@ public class icyTele extends LinearOpMode {
                     case 0: // ALIGNING
                         double targetSPos = shootSlotPositions[currentShootSlot];
                         double error = targetSPos - currentSPos;
-                        while (error > 180) error -= 360;
-                        while (error <= -180) error += 360;
+                        if (error < 0) error += 360;
 
                         double dt = pidTimer.seconds();
                         pidTimer.reset();
@@ -562,17 +543,17 @@ public class icyTele extends LinearOpMode {
                         double power = (error * kP) + (derivative * kD);
                         lastError = error;
 
-                        power = Math.max(-0.7, Math.min(0.7, power));
+                        power = Math.max(-0.5, Math.min(0.5, power));
 
                         if (needScan)
                         {
-                            if (Math.abs(error) > PositionToleranceDeg) {
+                            if (error > PositionToleranceDeg) {
                                 spindexer.setPower(power * voltageComp);
                                 sequenceStartTime = System.currentTimeMillis();
                             } else {
                                 spindexer.setPower(0);
                                 scan();
-                                if (stepTime >= 5) {
+                                if (stepTime >= 50) {
                                     shootStep = 1;
                                     sequenceStartTime = System.currentTimeMillis();
                                     emptySlotCounter = 0;
@@ -626,8 +607,7 @@ public class icyTele extends LinearOpMode {
                         if (tPos !=- 1)
                         {
                             double err = tPos - currentSPos;
-                            while (err > 180) err -= 360;
-                            while (err <= -180) err += 360;
+                            if (err < 0) err += 360;
 
                             double timeee = pidTimer.seconds();
                             pidTimer.reset();
@@ -635,14 +615,14 @@ public class icyTele extends LinearOpMode {
                             double deriv = (err - sLastError) / timeee;
                             double pow = (err * kP) + (deriv * kD);
                             sLastError = err;
-                            pow = Math.max(-0.7, Math.min(0.7, pow));
+                            pow = Math.max(-0.5, Math.min(0.5, pow));
 
-                            if (Math.abs(err) > PositionToleranceDeg) {
+                            if (err > PositionToleranceDeg) {
                                 spindexer.setPower(pow * voltage);
                                 sequenceStartTime = System.currentTimeMillis();
                             } else {
                                 spindexer.setPower(0);
-                                if (stepTime >= 5) { // Wait for settle
+                                if (stepTime >= 40) { // Wait for settle
                                     shootStep = 2;
                                     sequenceStartTime = System.currentTimeMillis();
                                     emptySlotCounter = 0;
@@ -653,7 +633,7 @@ public class icyTele extends LinearOpMode {
 
                     case 2: // POP UP
                         popUp.setPosition(0.4);
-                        if (stepTime >= 225) {
+                        if (stepTime >= 300) {
                             shootStep = 3;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -671,7 +651,7 @@ public class icyTele extends LinearOpMode {
                         break;
                 }
             }
-            else if (!gamepad1.right_bumper && !gamepad1.y && !gamepad1.dpad_left && !gamepad1.dpad_right){
+            else if (!gamepad2.right_bumper && !gamepad2.y && !gamepad2.dpad_left && !gamepad2.dpad_right){
                 spindexer.setPower(0);
                 shootStep = -1;
                 lastError = 0;
@@ -815,7 +795,7 @@ public class icyTele extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1238.6953*(Math.pow(dist, 0.35233)) + 100;//0.173 original
+        double velocity = 1238.6953*(Math.pow(dist, 0.35233));//0.173 original
         /*if (dist<=1.2)
         {
             velocity = velocity +35;
@@ -991,15 +971,14 @@ public class icyTele extends LinearOpMode {
     private int getClosestShootSlot() {
         double currentPos = getSpindexerAngleDeg();
         int bestSlot = 0;
-        double minDistance = 400;
+        double minForwardDistance = 400;
 
         for (int i = 0; i < shootSlotPositions.length; i++) {
             double distance = shootSlotPositions[i] - currentPos;
-            while (distance > 180) distance -= 360;
-            while (distance <= -180) distance += 360;
+            if (distance < 0) distance += 360; // Forward only
 
-            if (Math.abs(distance) < minDistance) {
-                minDistance = Math.abs(distance);
+            if (distance < minForwardDistance) {
+                minForwardDistance = distance;
                 bestSlot = i;
             }
         }
@@ -1008,15 +987,19 @@ public class icyTele extends LinearOpMode {
     private int getClosestForwardSlot() {
         double currentPos = getSpindexerAngleDeg();
         int bestSlot = currentSlot;
-        double minDistance = 400;
+        double minForwardDistance = 400; // Larger than 360
 
         for (int i = 0; i < intakeSlotPositions.length; i++) {
             double distance = intakeSlotPositions[i] - currentPos;
-            while (distance > 180) distance -= 360;
-            while (distance <= -180) distance += 360;
 
-            if (Math.abs(distance) < minDistance) {
-                minDistance = Math.abs(distance);
+            // If the distance is negative, it means the slot is "behind" us.
+            // We add 360 to find the distance to reach it by spinning forward.
+            if (distance < 0) {
+                distance += 360;
+            }
+
+            if (distance < minForwardDistance) {
+                minForwardDistance = distance;
                 bestSlot = i;
             }
         }

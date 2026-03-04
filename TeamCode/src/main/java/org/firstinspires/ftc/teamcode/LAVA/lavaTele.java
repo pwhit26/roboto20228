@@ -221,11 +221,14 @@ public class lavaTele extends LinearOpMode {
         while (!isStarted() && !isStopRequested())
         {
             if (gamepad1.dpad_left) {
-                lastPose = new Pose(0, 0, Math.toRadians(0));
+                lastPose = new Pose(-72, -24, Math.toRadians(0));
                 sleep(200);
             }
-            if (gamepad1.dpad_right) {
+            else if (gamepad1.dpad_right) {
                 lastPose = new Pose(60, 60, Math.toRadians(0));
+            }
+            else {
+                lastPose = new Pose(-72, -24, Math.toRadians(0));
             }
         }
         follower.setStartingPose(lastPose);
@@ -811,7 +814,7 @@ public class lavaTele extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1238.6953*(Math.pow(dist, 0.35233));//0.173 original
+        double velocity = 1238.6953*(Math.pow(dist, 0.35233)) + 100;//0.173 original
         /*if (dist<=1.2)
         {
             velocity = velocity +35;
