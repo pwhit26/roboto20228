@@ -66,14 +66,14 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     boolean readyForPopup = false;
     private AnalogInput encoder;
     static final int numIntakeSlots = 3;
-    int[] intakeSlotPositions = {110, 230, 355};
+    int[] intakeSlotPositions = {110, 230, 0};
     int[] shootSlotPositions = {65, 190, 305};
     static final double kP = 0.023; // Start small 0.018 original
     static final double kD = 0.0009; // Helps prevent overshoot 0.0009 original
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
-    double PositionToleranceDeg = 8;
+    double PositionToleranceDeg = 5;
     static final double max_spin_power = 0.5;
     double integral = 0;
     int currentSlot = 0;
@@ -135,6 +135,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
     double velocityDeadband = 5;       // deg/sec — must be basically stopped
     double minMoveThreshold = 0.8;     // ignore tiny encoder noise
     double lastPosition = 0;
+    boolean slotStartedEmpty = false;
 
 
 
@@ -445,51 +446,49 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                         // Cap the power so it doesn't go crazy
                         power = Math.max(-0.5, Math.min(0.5, power));
-                        double minPower = 0.15; // Minimum power to overcome friction
 
                         if (Math.abs(error) > PositionToleranceDeg) {
-                            double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
-                            spindexer.setPower(finalPower * voltageComp);
-                            sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
+                            spindexer.setPower(power * voltageComp);
+                            sequenceStartTime = System.currentTimeMillis(); // Reset timer because we arent there yet
                         } else {
                             spindexer.setPower(0);
                             // Wait for settle before turning on the intake motor
-                            if (stepTime >= 10) {
+                            if (stepTime >= 20) {
                                 intakeStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
+                                emptySlotCounter = 0;
+                                ballPresentCounter = 0;
+                                slotStartedEmpty = false;
                             }
                         }
                         break;
                     case 1:
-
                         boolean detected = isSpotTaken();
-
-                        // Always run intake while checking
-                        intake.setPower(0.85);
 
                         if (detected) {
                             ballPresentCounter++;
+                            emptySlotCounter = 0;
                         } else {
                             ballPresentCounter = 0;
+                            emptySlotCounter++;
                         }
 
-                        // Ball confirmed stable in slot
+                        // Delay turning on the intake motor until we are SURE the slot is empty.
+                        // This prevents the motor from briefly revving up when skipping over a filled slot.
+                        if (emptySlotCounter >= 2) {
+                            intake.setPower(0.85); // Normal intake power
+                        } else {
+                            intake.setPower(0);    // Keep it off while evaluating or if full
+                        }
+
                         if (ballPresentCounter >= BALL_PRESENT_THRESHOLD) {
-
-                            intake.setPower(0.2);
-                        }
-                        if (ballPresentCounter >= BALL_PRESENT_THRESHOLD + 3) {
+                            // Ball is fully detected, instantly stop the intake and move to the next slot
                             intake.setPower(0);
-
                             currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
-
                             intakeStep = 0;
                             sequenceStartTime = System.currentTimeMillis();
-
                             ballPresentCounter = 0;
                         }
-
-
                         break;
                 }
             }
@@ -649,7 +648,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
 
                     case 2: // POP UP
                         popUp.setPosition(0.4);
-                        if (stepTime >= 225) {
+                        if (stepTime >= 200) {
                             shootStep = 3;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -659,7 +658,7 @@ public class DecodeByEncodeCleanse extends LinearOpMode {
                         needScan = false;
                         popUp.setPosition(0);
                         // START MOVING TO NEXT SLOT WHILE RETRACTING
-                        if (stepTime >= 150) {
+                        if (stepTime >= 50) {
                             currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
                             shootStep = 0;
                             sequenceStartTime = System.currentTimeMillis();

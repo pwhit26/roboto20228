@@ -66,14 +66,14 @@ public class icyTele extends LinearOpMode {
     boolean readyForPopup = false;
     private AnalogInput encoder;
     static final int numIntakeSlots = 3;
-    int[] intakeSlotPositions = {110, 230, 355};
+    int[] intakeSlotPositions = {110, 230, 0};
     int[] shootSlotPositions = {65, 190, 305};
     static final double kP = 0.023; // Start small 0.018 original
     static final double kD = 0.0009; // Helps prevent overshoot 0.0009 original
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
-    double PositionToleranceDeg = 8;
+    double PositionToleranceDeg = 5;
     static final double max_spin_power = 0.5;
     double integral = 0;
     int currentSlot = 0;
@@ -135,6 +135,7 @@ public class icyTele extends LinearOpMode {
     double velocityDeadband = 5;       // deg/sec — must be basically stopped
     double minMoveThreshold = 0.8;     // ignore tiny encoder noise
     double lastPosition = 0;
+    boolean slotStartedEmpty = false;
 
 
 
@@ -444,56 +445,54 @@ public class icyTele extends LinearOpMode {
                         double voltageComp = 12.0 / Math.max(currentVoltage, 1.0);
 
                         double derivative = (error - lastError) / dt;
-                        double power = (error * kP) + (derivative * kD);
+                        double power = (error * (kP-0.003)) + (derivative * kD);
                         lastError = error;
 
                         // Cap the power so it doesn't go crazy
                         power = Math.max(-0.5, Math.min(0.5, power));
-                        double minPower = 0.15; // Minimum power to overcome friction
 
                         if (Math.abs(error) > PositionToleranceDeg) {
-                            double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
-                            spindexer.setPower(finalPower * voltageComp);
+                            spindexer.setPower(power * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
                             // Wait for settle before turning on the intake motor
-                            if (stepTime >= 10) {
+                            if (stepTime >= 20) {
                                 intakeStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
+                                emptySlotCounter = 0;
+                                ballPresentCounter = 0;
+                                slotStartedEmpty = false;
                             }
                         }
                         break;
                     case 1:
-
                         boolean detected = isSpotTaken();
-
-                        // Always run intake while checking
-                        intake.setPower(0.85);
 
                         if (detected) {
                             ballPresentCounter++;
+                            emptySlotCounter = 0;
                         } else {
                             ballPresentCounter = 0;
+                            emptySlotCounter++;
                         }
 
-                        // Ball confirmed stable in slot
+                        // Delay turning on the intake motor until we are SURE the slot is empty.
+                        // This prevents the motor from briefly revving up when skipping over a filled slot.
+                        if (emptySlotCounter >= 2) {
+                            intake.setPower(0.85); // Normal intake power
+                        } else {
+                            intake.setPower(0);    // Keep it off while evaluating or if full
+                        }
+
                         if (ballPresentCounter >= BALL_PRESENT_THRESHOLD) {
-
-                            intake.setPower(0.2);
-                        }
-                        if (ballPresentCounter >= BALL_PRESENT_THRESHOLD + 3) {
+                            // Ball is fully detected, instantly stop the intake and move to the next slot
                             intake.setPower(0);
-
                             currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
-
                             intakeStep = 0;
                             sequenceStartTime = System.currentTimeMillis();
-
                             ballPresentCounter = 0;
                         }
-
-
                         break;
                 }
             }
@@ -653,7 +652,7 @@ public class icyTele extends LinearOpMode {
 
                     case 2: // POP UP
                         popUp.setPosition(0.4);
-                        if (stepTime >= 225) {
+                        if (stepTime >= 200) {
                             shootStep = 3;
                             sequenceStartTime = System.currentTimeMillis();
                         }
@@ -663,7 +662,7 @@ public class icyTele extends LinearOpMode {
                         needScan = false;
                         popUp.setPosition(0);
                         // START MOVING TO NEXT SLOT WHILE RETRACTING
-                        if (stepTime >= 150) {
+                        if (stepTime >= 50) {
                             currentShootSlot = (currentShootSlot + 1) % shootSlotPositions.length;
                             shootStep = 0;
                             sequenceStartTime = System.currentTimeMillis();
@@ -815,7 +814,7 @@ public class icyTele extends LinearOpMode {
 
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
-        double velocity = 1238.6953*(Math.pow(dist, 0.35233)) + 100;//0.173 original
+        double velocity = (69.80877)*(dist)*(dist) + (17.851)*(dist) + 1141.445;
         /*if (dist<=1.2)
         {
             velocity = velocity +35;
@@ -921,7 +920,7 @@ public class icyTele extends LinearOpMode {
             telemetry.update();
             return true;
 
-        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
+        } else if(colors.green>(colors.blue) && colors.green>0.002) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -1104,7 +1103,7 @@ public class icyTele extends LinearOpMode {
         {
             scanResults[0] = "purple";
         }
-        else if (in0Pos.green>0.0013)
+        else if (in0Pos.green>0.0016)
         {
             scanResults[0] = "green";
         }
@@ -1116,7 +1115,7 @@ public class icyTele extends LinearOpMode {
         {
             scanResults[1] = "purple";
         }
-        else if (in1Pos.green > 0.0013)
+        else if (in1Pos.green > 0.0016)
         {
             scanResults[1] = "green";
         }
@@ -1128,7 +1127,7 @@ public class icyTele extends LinearOpMode {
         {
             scanResults[2] = "purple";
         }
-        else if (in2Pos.green > 0.0013)
+        else if (in2Pos.green > 0.0016)
         {
             scanResults[2] = "green";
         }

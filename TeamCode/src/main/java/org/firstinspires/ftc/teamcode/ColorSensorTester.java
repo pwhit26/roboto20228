@@ -982,7 +982,7 @@ public class ColorSensorTester extends LinearOpMode {
             telemetry.update();
             return true;
 
-        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
+        } else if(colors.green>(colors.blue) && colors.green>0.002) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -1059,7 +1059,7 @@ public class ColorSensorTester extends LinearOpMode {
         {
             scanResults[0] = "purple";
         }
-        else if (in0Pos.green>0.0013)
+        else if (in0Pos.green>0.0016)
         {
             scanResults[0] = "green";
         }
@@ -1071,7 +1071,7 @@ public class ColorSensorTester extends LinearOpMode {
         {
             scanResults[1] = "purple";
         }
-        else if (in1Pos.green > 0.0013)
+        else if (in1Pos.green > 0.0016)
         {
             scanResults[1] = "green";
         }
@@ -1083,7 +1083,7 @@ public class ColorSensorTester extends LinearOpMode {
         {
             scanResults[2] = "purple";
         }
-        else if (in2Pos.green > 0.0013)
+        else if (in2Pos.green > 0.0016)
         {
             scanResults[2] = "green";
         }
