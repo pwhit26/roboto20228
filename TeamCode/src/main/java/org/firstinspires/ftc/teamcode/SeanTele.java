@@ -135,7 +135,7 @@ public class SeanTele extends LinearOpMode {
     double velocityDeadband = 5;       // deg/sec — must be basically stopped
     double minMoveThreshold = 0.8;     // ignore tiny encoder noise
     double lastPosition = 0;
-
+    boolean slotStartedEmpty = false;
 
 
 
@@ -357,7 +357,6 @@ public class SeanTele extends LinearOpMode {
                         double tx = ll.getTx();
                         double txRad = Math.toRadians(tx);
                        /* if (Math.abs(txRad) < Math.toRadians(0.25)) txRad = 0;
-                        limelightCorrectionRad =
                                 0.85 * limelightCorrectionRad +
                                         0.15 * txRad;*/
 
@@ -400,14 +399,7 @@ public class SeanTele extends LinearOpMode {
             //Intake Macro
             // --- Inside your while(opModeIsActive) loop ---
 
-            if (gamepad2.a)
-            {
-                intake.setDirection(DcMotorSimple.Direction.REVERSE);
-                intake.setPower(1);
-            }
-            else {
-                intake.setDirection(DcMotorSimple.Direction.FORWARD);
-            }
+
 
             if (gamepad2.y) {
                 double currentPos = getSpindexerAngleDeg();
@@ -415,11 +407,10 @@ public class SeanTele extends LinearOpMode {
                 long stepTime = System.currentTimeMillis() - sequenceStartTime;
 
 
-                // 1. Calculate Forward Distance (to ensure it only spins one way)
+                // 1. Calculate Forwards Distance (to ensure it only spins one way)
                 double error = targetPos - currentPos;
-                if (error < 0) {
-                    error += 360; // Force the motor to find the target by spinning forward
-                }
+                while (error > 180) error -= 360;
+                while (error <= -180) error += 360;
 
                 switch (intakeStep) {
                     case -1: // INITIAL DECISION (Lazy Logic)
@@ -441,63 +432,65 @@ public class SeanTele extends LinearOpMode {
                         double voltageComp = 12.0 / Math.max(currentVoltage, 1.0);
 
                         double derivative = (error - lastError) / dt;
-                        double power = (error * kP) + (derivative * kD);
+                        double power = (error * (kP-0.003)) + (derivative * kD);
                         lastError = error;
 
                         // Cap the power so it doesn't go crazy
                         power = Math.max(-0.5, Math.min(0.5, power));
-                        double minPower = 0.15; // Minimum power to overcome friction
 
-                        if (error > PositionToleranceDeg) {
-                            double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
-                            spindexer.setPower(finalPower * voltageComp);
+                        if (Math.abs(error) > PositionToleranceDeg) {
+                            spindexer.setPower(power * voltageComp);
                             sequenceStartTime = System.currentTimeMillis(); // Reset timer because we aren't there yet
                         } else {
                             spindexer.setPower(0);
                             // Wait for settle before turning on the intake motor
-                            if (stepTime >= 40) {
+                            if (stepTime >= 20) {
                                 intakeStep = 1;
                                 sequenceStartTime = System.currentTimeMillis();
+                                emptySlotCounter = 0;
+                                ballPresentCounter = 0;
+                                slotStartedEmpty = false;
                             }
                         }
                         break;
                     case 1:
-
                         boolean detected = isSpotTaken();
-
-                        // Always run intake while checking
-                        intake.setPower(0.85);
 
                         if (detected) {
                             ballPresentCounter++;
+                            emptySlotCounter = 0;
                         } else {
                             ballPresentCounter = 0;
+                            emptySlotCounter++;
                         }
 
-                        // Ball confirmed stable in slot
+                        // Delay turning on the intake motor until we are SURE the slot is empty.
+                        // This prevents the motor from briefly revving up when skipping over a filled slot.
+                        if (emptySlotCounter >= 2) {
+                            intake.setPower(0.85); // Normal intake power
+                        } else {
+                            intake.setPower(0);    // Keep it off while evaluating or if full
+                        }
+
                         if (ballPresentCounter >= BALL_PRESENT_THRESHOLD) {
-
-                            intake.setPower(0.2);
-                        }
-                        if (ballPresentCounter >= BALL_PRESENT_THRESHOLD + 3) {
+                            // Ball is fully detected, instantly stop the intake and move to the next slot
                             intake.setPower(0);
-
                             currentSlot = (currentSlot + 1) % intakeSlotPositions.length;
-
                             intakeStep = 0;
                             sequenceStartTime = System.currentTimeMillis();
-
                             ballPresentCounter = 0;
                         }
-
-
                         break;
                 }
             }
 
-            else if (gamepad2.left_bumper && !gamepad2.y && !gamepad2.right_bumper && !gamepad2.dpad_left && !gamepad2.dpad_right)
+            else if (gamepad2.left_bumper && !gamepad2.y && !gamepad2.a)
             {
                 intake.setPower(0.8);
+            }
+            else if (gamepad2.a && !gamepad2.y && !gamepad2.left_bumper)
+            {
+                intake.setPower(-0.8);
             }
             else if (!gamepad2.y && !gamepad2.right_bumper && !gamepad2.dpad_left && !gamepad2.dpad_right && !gamepad2.left_bumper){
                 // Reset logic when button is released
@@ -508,6 +501,8 @@ public class SeanTele extends LinearOpMode {
             }
             telemetry.addData("intake", intakeStep);
             telemetry.update();
+
+
 
             if (gamepad2.right_bumper)
             {
@@ -901,7 +896,7 @@ public class SeanTele extends LinearOpMode {
             telemetry.update();
             return true;
 
-        } else if(colors.green>(colors.blue) && colors.green>0.0015) {
+        } else if(colors.green>(colors.blue) && colors.green>0.002) {
 
             telemetry.addData("Color seen:", "green");
             telemetry.addData("Color seen:", colors.green);
@@ -1087,7 +1082,7 @@ public class SeanTele extends LinearOpMode {
         {
             scanResults[0] = "purple";
         }
-        else if (in0Pos.green>0.0013)
+        else if (in0Pos.green>0.0016)
         {
             scanResults[0] = "green";
         }
@@ -1099,7 +1094,7 @@ public class SeanTele extends LinearOpMode {
         {
             scanResults[1] = "purple";
         }
-        else if (in1Pos.green > 0.0013)
+        else if (in1Pos.green > 0.0016)
         {
             scanResults[1] = "green";
         }
@@ -1111,7 +1106,7 @@ public class SeanTele extends LinearOpMode {
         {
             scanResults[2] = "purple";
         }
-        else if (in2Pos.green > 0.0013)
+        else if (in2Pos.green > 0.0016)
         {
             scanResults[2] = "green";
         }

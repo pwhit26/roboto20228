@@ -20,6 +20,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.PoseStorage;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.List;
@@ -28,8 +29,8 @@ import java.util.List;
 @Autonomous
 public class SpinOnUrOwn extends OpMode {
     private Follower follower;
-    private Pose start, shoot, shoot2, preScoop1, scoop1, farShoot, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain, jiggle, scoop4, scoop5, preScoop4, preScoop5;
-    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3, postJiggle, intake4, intake5, preSco3, preSco4, preSco5;
+    private Pose start, shoot, shoot2, preScoop1, scoop1, farShoot, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain, jiggle, scoop4, scoop5, preScoop4, preScoop5, preScoop6, preScoop7;
+    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3, postJiggle, intake4, intake5, preSco3, preSco4, preSco5, preSco6, preSco7;
     String pathState="";
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
@@ -42,6 +43,9 @@ public class SpinOnUrOwn extends OpMode {
     boolean shootSequenceActive = false;
     boolean shootSequenceComplete = true;
     boolean preScoStarted=false;
+    boolean preSco3Started = false;
+    boolean shootPre1Finished = false; // tracks whether shootPre1 path has completed so we can start preSco1
+    boolean preSco2Finished = false;   // tracks whether preSco2 path has completed so we can start the second intake align
     long Id, IdGame;
     boolean status21, status22, status23 = false;
     int sortStep = 0;
@@ -144,17 +148,20 @@ public class SpinOnUrOwn extends OpMode {
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(-66, 12, Math.toRadians(0));
-        farShoot = new Pose(-58, 12, Math.toRadians(24));
+        farShoot = new Pose(-54, 12, Math.toRadians(24));
         preScoop1 = new Pose(-32, 34, Math.toRadians(90));
-        scoop1 = new Pose(-32,43, Math.toRadians(90));
-        scoop2 = new Pose(-29, 49, Math.toRadians(90));
-        scoop3 = new Pose(-32, 68, Math.toRadians(90));
-        scoop4 = new Pose(-29, 66, Math.toRadians(90));
-        scoop5 = new Pose (-28, 68.5, Math.toRadians(90));
-        preScoop2 = new Pose (-52, 67, Math.toRadians(90));
-        preScoop3 = new Pose (-52, 65, Math.toRadians(120));
-        preScoop4 = new Pose (-53, 66, Math.toRadians(130));
-        preScoop5 = new Pose (-48, 64, Math.toRadians(160));
+        scoop1 = new Pose(-32,40.2, Math.toRadians(90));
+        scoop2 = new Pose(-29, 47, Math.toRadians(90));
+        scoop3 = new Pose(-33, 68, Math.toRadians(90));
+        scoop4 = new Pose(-29, 64, Math.toRadians(90));
+        scoop5 = new Pose (-26, 68.5, Math.toRadians(90));
+        preScoop2 = new Pose (-52, 50, Math.toRadians(90));
+        preScoop3 = new Pose (-52, 69.5, Math.toRadians(100));
+        preScoop4 = new Pose (-53, 63, Math.toRadians(100));
+        preScoop5 = new Pose (-53, 69.5, Math.toRadians(100));
+        preScoop6 = new Pose (-53, 63, Math.toRadians(100));
+        preScoop7 = new Pose (-54, 71, Math.toRadians(100));
+        parky = new Pose (-30, 20, Math.toRadians(90));
 
 
 
@@ -213,6 +220,22 @@ public class SpinOnUrOwn extends OpMode {
         preSco5 = follower.pathBuilder()
                 .addPath(new BezierLine(preScoop4, preScoop5))
                 .setLinearHeadingInterpolation(preScoop4.getHeading(), preScoop5.getHeading())
+                .build();
+        preSco6 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop5, preScoop6))
+                .setLinearHeadingInterpolation(preScoop5.getHeading(), preScoop6.getHeading())
+                .build();
+        preSco7 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop6, preScoop7))
+                .setLinearHeadingInterpolation(preScoop6.getHeading(), preScoop7.getHeading())
+                .build();
+        sco2Sho = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop7, farShoot))
+                .setLinearHeadingInterpolation(preScoop7.getHeading(), farShoot.getHeading())
+                .build();
+        park = follower.pathBuilder()
+                .addPath(new BezierLine(farShoot, parky))
+                .setLinearHeadingInterpolation(farShoot.getHeading(), parky.getHeading())
                 .build();
 
 
@@ -293,6 +316,8 @@ public class SpinOnUrOwn extends OpMode {
     @Override
     public void loop() {
 
+        follower.update();
+        PoseStorage.lastPose = follower.getPose();
 
         long elapsedTime = System.currentTimeMillis() - startTime;
         double currentSPos = getSpindexerAngleDeg();
@@ -419,8 +444,8 @@ public class SpinOnUrOwn extends OpMode {
 
             case 6: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1560); //ball 2
-                if (elapsedTime >= 300) {
+                turret.setVelocity(1550); //ball 2
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -443,7 +468,7 @@ public class SpinOnUrOwn extends OpMode {
 
             case 8: //pop up shoot
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -452,7 +477,7 @@ public class SpinOnUrOwn extends OpMode {
             case 9: //pop up down
                 popUp.setPosition(0);
                 turret.setVelocity(1560); //ball 3
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -475,7 +500,7 @@ public class SpinOnUrOwn extends OpMode {
 
             case 11: //pop up shoot
                 popUp.setPosition(0.43);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -484,26 +509,32 @@ public class SpinOnUrOwn extends OpMode {
             case 12: //pop up down
                 popUp.setPosition(0);
 
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
             case 13:
-                if (!follower.isBusy()) {
-                    follower.followPath(shootPre1);
-                    turret.setVelocity(800);
-                }
-                if (elapsedTime >= 500) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                if (!follower.isBusy()) {   // ensures it only starts once
-                    follower.followPath(preSco1);
-                    pathStage = 14;
+                // Phase 1: drive to pre-intake staging area (shootPre1)
+                turret.setVelocity(800);
+                if (!shootPre1Finished) {
+                    // Only start shootPre1 once
+                    if (!follower.isBusy()) {
+                        follower.followPath(shootPre1);
+                        shootPre1Finished = true; // mark it as started so we don't restart it
+                        startTime = System.currentTimeMillis();
+                    }
+                } else {
+                    // Phase 2: once shootPre1 is done, drive to intake position (preSco1)
+                    if (!follower.isBusy()) {
+                        follower.followPath(preSco1);
+                        pathStage = 14;
+                        startTime = System.currentTimeMillis();
+                    }
                 }
                 break;
+
             case 14:
              //   follower.followPath(shootPre1);
                 //spindexer.setPower(0.6);
@@ -516,12 +547,14 @@ public class SpinOnUrOwn extends OpMode {
                 }
                 //intake.setPower(0);
                 if (elapsedTime >= 500) {
+                    intake.setPower(0.8);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Starting second path");
                 break;
             case 15:
+                intake.setPower(0.8);
                 if (!follower.isBusy()) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -564,7 +597,7 @@ public class SpinOnUrOwn extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -596,7 +629,7 @@ public class SpinOnUrOwn extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -618,7 +651,7 @@ public class SpinOnUrOwn extends OpMode {
 
 
             case 23: //little baby first move
-                turret.setVelocity(1750); //ball 4
+                turret.setVelocity(1550); //ball 4
                 angleTurret0.setPosition(0.005);
                 angleTurret1.setPosition(0.995);
                 // follower.followPath(startShoot);
@@ -663,7 +696,7 @@ public class SpinOnUrOwn extends OpMode {
                 angleTurret0.setPosition(0.015);
                 angleTurret1.setPosition(0.985);
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -671,8 +704,8 @@ public class SpinOnUrOwn extends OpMode {
 
             case 27: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1630); //ball 5
-                if (elapsedTime >= 300) {
+                turret.setVelocity(1460); //ball 5
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -695,7 +728,7 @@ public class SpinOnUrOwn extends OpMode {
 
             case 29: //pop up shoot
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -703,8 +736,8 @@ public class SpinOnUrOwn extends OpMode {
 
             case 30: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1720); //ball 6
-                if (elapsedTime >= 300) {
+                turret.setVelocity(1680); //ball 6
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -723,7 +756,7 @@ public class SpinOnUrOwn extends OpMode {
                 break;
             case 32:
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -731,7 +764,7 @@ public class SpinOnUrOwn extends OpMode {
             case 33:
                 popUp.setPosition(0);
                 turret.setVelocity(800);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -740,201 +773,23 @@ public class SpinOnUrOwn extends OpMode {
                 break;
 
             case 34:
-                //spindexer.setPower(0.6);
-                intakeAlign(2);
-                if (spindexerAtTarget(intakeSlotPositions[2]))
-                {
-
-                    telemetry.addData("position", " intake slot 2 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
-                if (elapsedTime >= 600) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting second path");
-                telemetry.addData("FINISHED HERE 31", pathStage);
-                break;
-            case 35:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    follower.followPath(preSco2);
-                    pathStage = 37;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 37:
-                //elapsedTime = System.currentTimeMillis() - startTime;
-
-                // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1200) { //1450
-                    intake.setPower(0.2);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 38:
-                intakeAlign(0);
-                if (spindexerAtTarget(intakeSlotPositions[0]))
-                {
-
-                    telemetry.addData("position", " intake slot 0 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
-                if (elapsedTime >= 600) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 39:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    follower.followPath(preSco3);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 40:
-                if (elapsedTime >= 1200) { //1470
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 41:
-                if (!intake.isBusy())
-                {
-                    intakeAlign(1);
-                }
-                if (spindexerAtTarget(intakeSlotPositions[1]))
-                {
-
-                    telemetry.addData("position", " intake slot 1 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
-                if (!follower.isBusy()) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 42:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    follower.followPath(preSco4);
-                }
-                if (elapsedTime>=1000) //1850
-                {
-                    turret.setVelocity(1800);
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 43:
-
-                shootAlign(2);
-
-                if (spindexerAtTarget(shootSlotPositions[2]))
-                {
-
-                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-
-
-
-
-                break;
-
-
-
-            case 44: //pop up shoot
-                if (!follower.isBusy())
-                {
-                    angleTurret0.setPosition(0.015);
-                    angleTurret1.setPosition(0.985);
-                    popUp.setPosition(0.4);
-                    if (elapsedTime >= 300) {
+                turret.setVelocity(800);
+                if (!preSco2Finished) {
+                    // Phase 1: start driving to second intake staging area (preSco2) once
+                    if (!follower.isBusy()) {
+                        follower.followPath(preSco2);
+                        preSco2Finished = true;
+                        startTime = System.currentTimeMillis();
+                    }
+                } else {
+                    // Phase 2: once preSco2 is done, advance to intake alignment
+                    if (!follower.isBusy()) {
                         pathStage++;
                         startTime = System.currentTimeMillis();
                     }
                 }
                 break;
-
-            case 45: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(1700); //ball 2
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 46: //spindex to next spot
-
-                shootAlign(0);
-
-                if (spindexerAtTarget(shootSlotPositions[0]))
-                {
-
-                    telemetry.addData("position", "slot 1 - " + getSpindexerAngleDeg());
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-
-                }
-
-                break;
-
-            case 47: //pop up shoot
-                popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-
-            case 48: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(1700); //ball 3
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("FINISHED HERE? 30", pathStage);
-
-                break;
-            case 49:
-                shootAlign(1);
-                if (spindexerAtTarget(shootSlotPositions[1]))
-                {
-
-                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 50:
-                popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 51:
-                popUp.setPosition(0);
-                //turret.setVelocity(300); //ball 3
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("6th ball shot", pathStage);
-
-                break;
-            case 52:
+            case 35:
                 //   follower.followPath(shootPre1);
                 //spindexer.setPower(0.6);
                 intakeAlign(2);
@@ -945,40 +800,46 @@ public class SpinOnUrOwn extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Starting second path");
-                telemetry.addData("FINISHED HERE 31", pathStage);
                 break;
-            case 53:
+            case 36:
                 if (!follower.isBusy()) {
+                    intake.setPower(0.8);
+                    //follower.followPath(preSco3);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 54:
+            case 37:
 
                 // Start the path
-                intake.setPower(0.8);
+                if (!preSco3Started) { //preScoStarted is actually for intake2 i was just too lazy to change the name
+                    intake.setPower(0.8);
+                    follower.followPath(preSco3);
 
-                pathStage++;
-                startTime = System.currentTimeMillis();
+                    preSco3Started = true;
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
                 break;
-            case 55:
+            case 38:
 
 
                 //elapsedTime = System.currentTimeMillis() - startTime;
 
                 // ---- MECHANISM TIMING (always runs) ----
                 if (elapsedTime >= 1200) { //1450
-                    intake.setPower(0);
+                    intake.setPower(0.2);
+                    follower.followPath(preSco4);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 56:
+            case 39:
                 if (!intake.isBusy())
                 {
                     intakeAlign(0);
@@ -990,27 +851,32 @@ public class SpinOnUrOwn extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 57:
+            case 40:
                 if (!follower.isBusy()) {
                     intake.setPower(0.8);
-                    //   follower.followPath(intake2);
+                    follower.followPath(preSco5);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 58:
+            case 41:
                 if (elapsedTime >= 1200) { //1470
-                    intake.setPower(0);
+                    intake.setPower(0.2);
+
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 59:
+            case 42:
+                if (!follower.isBusy())
+                {
+                    follower.followPath(preSco6);
+                }
                 if (!intake.isBusy())
                 {
                     intakeAlign(1);
@@ -1022,19 +888,19 @@ public class SpinOnUrOwn extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 60:
+            case 43:
                 if (!follower.isBusy()) {
                     intake.setPower(0.8);
-                    //    follower.followPath(intake3);
+                    follower.followPath(preSco7);
                 }
-                if (elapsedTime>=1000) //1850
+                if (elapsedTime>=1100) //1850
                 {
-                    turret.setVelocity(800);
+                    turret.setVelocity(1500);
                     intake.setPower(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -1043,19 +909,153 @@ public class SpinOnUrOwn extends OpMode {
 
 
 
-            case 61: // All paths complete
+            case 44: //little baby first move
+                turret.setVelocity(1650); //ball 7
+                angleTurret0.setPosition(0.005);
+                angleTurret1.setPosition(0.995);
+                // follower.followPath(startShoot);
+                if (elapsedTime >= 300) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("Status", "Finished first path");
+                break;
+
+            case 45:
+                if (!follower.isBusy()) {   // ensures it only starts once
+                    follower.followPath(sco2Sho);
+                    pathStage++;
+                }
+                break;
+
+            case 46:
+
+                shootAlign(0);
+
+                if (spindexerAtTarget(shootSlotPositions[0]))
+                {
+
+                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
+
+                }
+                if (!follower.isBusy())
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+
+
+
+
+                break;
+
+
+
+            case 47: //pop up shoot
+                angleTurret0.setPosition(0.015);
+                angleTurret1.setPosition(0.985);
+                popUp.setPosition(0.4);
+                if (elapsedTime >= 240) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 48: //pop up down
+                popUp.setPosition(0);
+                turret.setVelocity(1600); //ball 8
+                if (elapsedTime >= 200) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 49: //spindex to next spot
+
+                shootAlign(1);
+
+                if (spindexerAtTarget(shootSlotPositions[1]))
+                {
+
+                    telemetry.addData("position", "slot 1 - " + getSpindexerAngleDeg());
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+
+                }
+
+                break;
+
+            case 50: //pop up shoot
+                popUp.setPosition(0.4);
+                if (elapsedTime >= 240) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 51: //pop up down
+                popUp.setPosition(0);
+                turret.setVelocity(1630); //ball 9
+                if (elapsedTime >= 200) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("FINISHED HERE? 30", pathStage);
+
+                break;
+            case 52:
+                shootAlign(2);
+                if (spindexerAtTarget(shootSlotPositions[2]))
+                {
+
+                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+            case 53:
+                popUp.setPosition(0.4);
+                if (elapsedTime >= 240) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+            case 54:
+                popUp.setPosition(0);
+                turret.setVelocity(800);
+                if (elapsedTime >= 200) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                telemetry.addData("6th ball shot", pathStage);
+
+                break;
+            case 55:
+                    follower.followPath(park);
+                if (!follower.isBusy())
+                {
+                    pathStage++;
+                }
+                break;
+
+            case 56: // All paths complete
                 // Robot is stopped, do nothing
-                terminateOpModeNow();
+                    terminateOpModeNow();
                 return;
         }
 
         // Update the follower to move the robot
-        follower.update();
+
 
         // Add telemetry for debugging
         telemetry.addData("Path Stage", pathStage);
         telemetry.addData("Current Pose", follower.getPose());
         telemetry.update();
+    }
+
+    @Override
+    public void stop() {
+        PoseStorage.lastPose = follower.getPose();
     }
 
 

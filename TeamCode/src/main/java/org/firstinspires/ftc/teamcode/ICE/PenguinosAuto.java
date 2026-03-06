@@ -20,6 +20,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.PoseStorage;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.util.List;
@@ -28,8 +29,8 @@ import java.util.List;
 @Autonomous
 public class PenguinosAuto extends OpMode {
     private Follower follower;
-    private Pose start, shoot, shoot2, preScoop1, scoop1, farShoot, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain, jiggle, scoop4, scoop5;
-    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3, postJiggle, intake4, intake5;
+    private Pose start, shoot, shoot2, preScoop1, scoop1, farShoot, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain, jiggle, scoop4, scoop5, preScoop4, preScoop5, preScoop6, preScoop7;
+    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3, postJiggle, intake4, intake5, preSco3, preSco4, preSco5, preSco6, preSco7;
     String pathState="";
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
@@ -42,6 +43,9 @@ public class PenguinosAuto extends OpMode {
     boolean shootSequenceActive = false;
     boolean shootSequenceComplete = true;
     boolean preScoStarted=false;
+    boolean preSco3Started = false;
+    boolean shootPre1Finished = false; // tracks whether shootPre1 path has completed so we can start preSco1
+    boolean preSco2Finished = false;   // tracks whether preSco2 path has completed so we can start the second intake align
     long Id, IdGame;
     boolean status21, status22, status23 = false;
     int sortStep = 0;
@@ -57,12 +61,13 @@ public class PenguinosAuto extends OpMode {
     static final int numIntakeSlots = 3;
     int[] intakeSlotPositions = {110, 230, 355};
     int[] shootSlotPositions = {65, 190, 305};
-    static final double kP = 0.0155; // Start small
+    static final double kP = 0.018; // Start small
     static final double kD = 0.0008; // Helps prevent overshoot
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
-    double PositionToleranceDeg = 10;
+    double PositionToleranceDeg = 4.5;
+    int spindexerSettleCounter = 0;
     static final double max_spin_power = 0.5;
     double integral = 0;
     int currentSlot = 0;
@@ -143,13 +148,21 @@ public class PenguinosAuto extends OpMode {
         //backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         // Initialize poses - adjust these values to match your field setup
         start = new Pose(-66, 12, Math.toRadians(0));
-        farShoot = new Pose(-58, 12, Math.toRadians(24));
+        farShoot = new Pose(-54, 12, Math.toRadians(24));
         preScoop1 = new Pose(-32, 34, Math.toRadians(90));
-        scoop1 = new Pose(-32,43, Math.toRadians(90));
-        scoop2 = new Pose(-29, 50, Math.toRadians(90));
-        scoop3 = new Pose(-32, 68, Math.toRadians(90));
-        scoop4 = new Pose(-29, 66, Math.toRadians(90));
-        scoop5 = new Pose (-28, 68.5, Math.toRadians(90));
+        scoop1 = new Pose(-32,40.2, Math.toRadians(90));
+        scoop2 = new Pose(-29, 47, Math.toRadians(90));
+        scoop3 = new Pose(-33, 68, Math.toRadians(90));
+        scoop4 = new Pose(-29, 64, Math.toRadians(90));
+        scoop5 = new Pose (-26, 68.5, Math.toRadians(90));
+        preScoop2 = new Pose (-52, 50, Math.toRadians(90));
+        preScoop3 = new Pose (-52, 69.5, Math.toRadians(100));
+        preScoop4 = new Pose (-53, 63, Math.toRadians(100));
+        preScoop5 = new Pose (-53, 69.5, Math.toRadians(100));
+        preScoop6 = new Pose (-53, 63, Math.toRadians(100));
+        preScoop7 = new Pose (-54, 71, Math.toRadians(100));
+        parky = new Pose (-30, 20, Math.toRadians(90));
+
 
 
 
@@ -191,6 +204,38 @@ public class PenguinosAuto extends OpMode {
         sco1Sho = follower.pathBuilder()
                 .addPath(new BezierLine(scoop5, farShoot))
                 .setLinearHeadingInterpolation(scoop5.getHeading(), farShoot.getHeading())
+                .build();
+        preSco2 = follower.pathBuilder()
+                .addPath(new BezierLine(farShoot, preScoop2))
+                .setLinearHeadingInterpolation(farShoot.getHeading(), preScoop2.getHeading())
+                .build();
+        preSco3 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop2, preScoop3))
+                .setLinearHeadingInterpolation(preScoop2.getHeading(), preScoop3.getHeading())
+                .build();
+        preSco4 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop3, preScoop4))
+                .setLinearHeadingInterpolation(preScoop3.getHeading(), preScoop4.getHeading())
+                .build();
+        preSco5 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop4, preScoop5))
+                .setLinearHeadingInterpolation(preScoop4.getHeading(), preScoop5.getHeading())
+                .build();
+        preSco6 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop5, preScoop6))
+                .setLinearHeadingInterpolation(preScoop5.getHeading(), preScoop6.getHeading())
+                .build();
+        preSco7 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop6, preScoop7))
+                .setLinearHeadingInterpolation(preScoop6.getHeading(), preScoop7.getHeading())
+                .build();
+        sco2Sho = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop7, farShoot))
+                .setLinearHeadingInterpolation(preScoop7.getHeading(), farShoot.getHeading())
+                .build();
+        park = follower.pathBuilder()
+                .addPath(new BezierLine(farShoot, parky))
+                .setLinearHeadingInterpolation(farShoot.getHeading(), parky.getHeading())
                 .build();
 
 
@@ -271,6 +316,8 @@ public class PenguinosAuto extends OpMode {
     @Override
     public void loop() {
 
+        follower.update();
+        PoseStorage.lastPose = follower.getPose();
 
         long elapsedTime = System.currentTimeMillis() - startTime;
         double currentSPos = getSpindexerAngleDeg();
@@ -331,7 +378,7 @@ public class PenguinosAuto extends OpMode {
                 break;*/
 
             case 0:
-                turret.setVelocity(1950); //ball 1
+                turret.setVelocity(1530); //ball 1
                 if (!follower.isBusy()) {   // ensures it only starts once
                     follower.followPath(startShoot);
                     pathStage = 1;
@@ -345,8 +392,8 @@ public class PenguinosAuto extends OpMode {
                 angleTurret0.setPosition(0.005);
                 angleTurret1.setPosition(0.995);
                 // follower.followPath(startShoot);
-                turret.setVelocity(1950); //ball 1
-                if (elapsedTime >= 2300) {
+                turret.setVelocity(1530); //ball 1
+                if (elapsedTime >= 2000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -382,7 +429,7 @@ public class PenguinosAuto extends OpMode {
 
 
             case 5: //pop up shoot
-                turret.setVelocity(1950); //ball 1
+                turret.setVelocity(1530); //ball 1
                 if (elapsedTime>=900)
                 {
                     angleTurret0.setPosition(0.015);
@@ -397,8 +444,8 @@ public class PenguinosAuto extends OpMode {
 
             case 6: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1670); //ball 2
-                if (elapsedTime >= 300) {
+                turret.setVelocity(1550); //ball 2
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -421,7 +468,7 @@ public class PenguinosAuto extends OpMode {
 
             case 8: //pop up shoot
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -429,8 +476,8 @@ public class PenguinosAuto extends OpMode {
 
             case 9: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1655); //ball 3
-                if (elapsedTime >= 300) {
+                turret.setVelocity(1560); //ball 3
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -453,7 +500,7 @@ public class PenguinosAuto extends OpMode {
 
             case 11: //pop up shoot
                 popUp.setPosition(0.43);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -462,26 +509,32 @@ public class PenguinosAuto extends OpMode {
             case 12: //pop up down
                 popUp.setPosition(0);
 
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
             case 13:
-                if (!follower.isBusy()) {
-                    follower.followPath(shootPre1);
-                    turret.setVelocity(1000);
-                }
-                if (elapsedTime >= 500) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                if (!follower.isBusy()) {   // ensures it only starts once
-                    follower.followPath(preSco1);
-                    pathStage = 14;
+                // Phase 1: drive to pre-intake staging area (shootPre1)
+                turret.setVelocity(800);
+                if (!shootPre1Finished) {
+                    // Only start shootPre1 once
+                    if (!follower.isBusy()) {
+                        follower.followPath(shootPre1);
+                        shootPre1Finished = true; // mark it as started so we don't restart it
+                        startTime = System.currentTimeMillis();
+                    }
+                } else {
+                    // Phase 2: once shootPre1 is done, drive to intake position (preSco1)
+                    if (!follower.isBusy()) {
+                        follower.followPath(preSco1);
+                        pathStage = 14;
+                        startTime = System.currentTimeMillis();
+                    }
                 }
                 break;
+
             case 14:
                 //   follower.followPath(shootPre1);
                 //spindexer.setPower(0.6);
@@ -494,12 +547,14 @@ public class PenguinosAuto extends OpMode {
                 }
                 //intake.setPower(0);
                 if (elapsedTime >= 500) {
+                    intake.setPower(0.8);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Starting second path");
                 break;
             case 15:
+                intake.setPower(0.8);
                 if (!follower.isBusy()) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -542,7 +597,7 @@ public class PenguinosAuto extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -574,7 +629,7 @@ public class PenguinosAuto extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -586,7 +641,7 @@ public class PenguinosAuto extends OpMode {
                 }
                 if (elapsedTime>=1100) //1850
                 {
-                    turret.setVelocity(800);
+                    turret.setVelocity(1500);
                     intake.setPower(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -610,7 +665,7 @@ public class PenguinosAuto extends OpMode {
             case 24:
                 if (!follower.isBusy()) {   // ensures it only starts once
                     follower.followPath(sco1Sho);
-                    pathStage = 1;
+                    pathStage++;
                 }
                 break;
 
@@ -624,7 +679,7 @@ public class PenguinosAuto extends OpMode {
                     telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
 
                 }
-                if (elapsedTime>=400)
+                if (!follower.isBusy())
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -641,7 +696,7 @@ public class PenguinosAuto extends OpMode {
                 angleTurret0.setPosition(0.015);
                 angleTurret1.setPosition(0.985);
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -649,8 +704,8 @@ public class PenguinosAuto extends OpMode {
 
             case 27: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1575); //ball 5
-                if (elapsedTime >= 300) {
+                turret.setVelocity(1460); //ball 5
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -673,7 +728,7 @@ public class PenguinosAuto extends OpMode {
 
             case 29: //pop up shoot
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -681,8 +736,8 @@ public class PenguinosAuto extends OpMode {
 
             case 30: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1800); //ball 6
-                if (elapsedTime >= 300) {
+                turret.setVelocity(1680); //ball 6
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -701,7 +756,7 @@ public class PenguinosAuto extends OpMode {
                 break;
             case 32:
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -709,7 +764,7 @@ public class PenguinosAuto extends OpMode {
             case 33:
                 popUp.setPosition(0);
                 turret.setVelocity(800);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -718,6 +773,23 @@ public class PenguinosAuto extends OpMode {
                 break;
 
             case 34:
+                turret.setVelocity(800);
+                if (!preSco2Finished) {
+                    // Phase 1: start driving to second intake staging area (preSco2) once
+                    if (!follower.isBusy()) {
+                        follower.followPath(preSco2);
+                        preSco2Finished = true;
+                        startTime = System.currentTimeMillis();
+                    }
+                } else {
+                    // Phase 2: once preSco2 is done, advance to intake alignment
+                    if (!follower.isBusy()) {
+                        pathStage++;
+                        startTime = System.currentTimeMillis();
+                    }
+                }
+                break;
+            case 35:
                 //   follower.followPath(shootPre1);
                 //spindexer.setPower(0.6);
                 intakeAlign(2);
@@ -728,40 +800,46 @@ public class PenguinosAuto extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("Status", "Starting second path");
-                telemetry.addData("FINISHED HERE 31", pathStage);
                 break;
-            case 35:
+            case 36:
                 if (!follower.isBusy()) {
+                    intake.setPower(0.8);
+                    //follower.followPath(preSco3);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 36:
+            case 37:
 
                 // Start the path
-                intake.setPower(0.8);
+                if (!preSco3Started) { //preScoStarted is actually for intake2 i was just too lazy to change the name
+                    intake.setPower(0.8);
+                    follower.followPath(preSco3);
 
-                pathStage++;
-                startTime = System.currentTimeMillis();
+                    preSco3Started = true;
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
                 break;
-            case 37:
+            case 38:
 
 
                 //elapsedTime = System.currentTimeMillis() - startTime;
 
                 // ---- MECHANISM TIMING (always runs) ----
                 if (elapsedTime >= 1200) { //1450
-                    intake.setPower(0);
+                    intake.setPower(0.2);
+                    follower.followPath(preSco4);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 38:
+            case 39:
                 if (!intake.isBusy())
                 {
                     intakeAlign(0);
@@ -773,27 +851,32 @@ public class PenguinosAuto extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 39:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    //   follower.followPath(intake2);
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
             case 40:
-                if (elapsedTime >= 1200) { //1470
-                    intake.setPower(0);
+                if (!follower.isBusy()) {
+                    intake.setPower(0.8);
+                    follower.followPath(preSco5);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
             case 41:
+                if (elapsedTime >= 1200) { //1470
+                    intake.setPower(0.2);
+
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+            case 42:
+                if (!follower.isBusy())
+                {
+                    follower.followPath(preSco6);
+                }
                 if (!intake.isBusy())
                 {
                     intakeAlign(1);
@@ -805,67 +888,93 @@ public class PenguinosAuto extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 42:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    //    follower.followPath(intake3);
-                }
-                if (elapsedTime>=1000) //1850
-                {
-                    turret.setVelocity(1800);
-                    intake.setPower(0);
+                if (elapsedTime >= 500) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
             case 43:
-
-                shootAlign(2);
-
-                if (spindexerAtTarget(shootSlotPositions[2]))
+                if (!follower.isBusy()) {
+                    intake.setPower(0.8);
+                    follower.followPath(preSco7);
+                }
+                if (elapsedTime>=1100) //1850
                 {
-
-                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
+                    turret.setVelocity(1500);
+                    intake.setPower(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
-
-
-
-
                 break;
 
 
 
-            case 44: //pop up shoot
-                angleTurret0.setPosition(0.015);
-                angleTurret1.setPosition(0.985);
-                popUp.setPosition(0.4);
+            case 44: //little baby first move
+                turret.setVelocity(1650); //ball 7
+                angleTurret0.setPosition(0.005);
+                angleTurret1.setPosition(0.995);
+                // follower.followPath(startShoot);
                 if (elapsedTime >= 300) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
+                telemetry.addData("Status", "Finished first path");
                 break;
 
-            case 45: //pop up down
-                popUp.setPosition(0);
-                turret.setVelocity(1700); //ball 2
-                if (elapsedTime >= 300) {
+            case 45:
+                if (!follower.isBusy()) {   // ensures it only starts once
+                    follower.followPath(sco2Sho);
                     pathStage++;
-                    startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 46: //spindex to next spot
+            case 46:
 
                 shootAlign(0);
 
                 if (spindexerAtTarget(shootSlotPositions[0]))
+                {
+
+                    telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
+
+                }
+                if (!follower.isBusy())
+                {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+
+
+
+
+                break;
+
+
+
+            case 47: //pop up shoot
+                angleTurret0.setPosition(0.015);
+                angleTurret1.setPosition(0.985);
+                popUp.setPosition(0.4);
+                if (elapsedTime >= 240) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 48: //pop up down
+                popUp.setPosition(0);
+                turret.setVelocity(1600); //ball 8
+                if (elapsedTime >= 200) {
+                    pathStage++;
+                    startTime = System.currentTimeMillis();
+                }
+                break;
+
+            case 49: //spindex to next spot
+
+                shootAlign(1);
+
+                if (spindexerAtTarget(shootSlotPositions[1]))
                 {
 
                     telemetry.addData("position", "slot 1 - " + getSpindexerAngleDeg());
@@ -876,27 +985,27 @@ public class PenguinosAuto extends OpMode {
 
                 break;
 
-            case 47: //pop up shoot
+            case 50: //pop up shoot
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
 
-            case 48: //pop up down
+            case 51: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1700); //ball 3
-                if (elapsedTime >= 300) {
+                turret.setVelocity(1630); //ball 9
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("FINISHED HERE? 30", pathStage);
 
                 break;
-            case 49:
-                shootAlign(1);
-                if (spindexerAtTarget(shootSlotPositions[1]))
+            case 52:
+                shootAlign(2);
+                if (spindexerAtTarget(shootSlotPositions[2]))
                 {
 
                     telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
@@ -904,145 +1013,49 @@ public class PenguinosAuto extends OpMode {
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 50:
+            case 53:
                 popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
+                if (elapsedTime >= 240) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 51:
+            case 54:
                 popUp.setPosition(0);
-                //turret.setVelocity(300); //ball 3
-                if (elapsedTime >= 300) {
+                turret.setVelocity(800);
+                if (elapsedTime >= 200) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 telemetry.addData("6th ball shot", pathStage);
 
                 break;
-            case 52:
-                //   follower.followPath(shootPre1);
-                //spindexer.setPower(0.6);
-                intakeAlign(2);
-                if (spindexerAtTarget(intakeSlotPositions[2]))
-                {
-
-                    telemetry.addData("position", " intake slot 2 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
-                if (elapsedTime >= 800) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                telemetry.addData("Status", "Starting second path");
-                telemetry.addData("FINISHED HERE 31", pathStage);
-                break;
-            case 53:
-                if (!follower.isBusy()) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 54:
-
-                // Start the path
-                intake.setPower(0.8);
-
-                pathStage++;
-                startTime = System.currentTimeMillis();
-                break;
             case 55:
-
-
-                //elapsedTime = System.currentTimeMillis() - startTime;
-
-                // ---- MECHANISM TIMING (always runs) ----
-                if (elapsedTime >= 1200) { //1450
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 56:
-                if (!intake.isBusy())
+                follower.followPath(park);
+                if (!follower.isBusy())
                 {
-                    intakeAlign(0);
-                }
-                if (spindexerAtTarget(intakeSlotPositions[0]))
-                {
-
-                    telemetry.addData("position", " intake slot 0 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
-                if (elapsedTime >= 800) {
                     pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 57:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    //   follower.followPath(intake2);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 58:
-                if (elapsedTime >= 1200) { //1470
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 59:
-                if (!intake.isBusy())
-                {
-                    intakeAlign(1);
-                }
-                if (spindexerAtTarget(intakeSlotPositions[1]))
-                {
-
-                    telemetry.addData("position", " intake slot 1 - " + getSpindexerAngleDeg());
-
-                }
-                //intake.setPower(0);
-                if (elapsedTime >= 800) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
-                }
-                break;
-            case 60:
-                if (!follower.isBusy()) {
-                    intake.setPower(0.8);
-                    //    follower.followPath(intake3);
-                }
-                if (elapsedTime>=1000) //1850
-                {
-                    turret.setVelocity(800);
-                    intake.setPower(0);
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
                 }
                 break;
 
-
-
-            case 61: // All paths complete
+            case 56: // All paths complete
                 // Robot is stopped, do nothing
                 terminateOpModeNow();
                 return;
         }
 
         // Update the follower to move the robot
-        follower.update();
+
 
         // Add telemetry for debugging
         telemetry.addData("Path Stage", pathStage);
         telemetry.addData("Current Pose", follower.getPose());
         telemetry.update();
+    }
+
+    @Override
+    public void stop() {
+        PoseStorage.lastPose = follower.getPose();
     }
 
 
@@ -1294,11 +1307,17 @@ public class PenguinosAuto extends OpMode {
         double power = (error * kP) + (derivative * kD);
         shootLastError = error;
 
-        power = Math.max(-0.3, Math.min(0.3, power));
+        // Give it more max power (0.55 instead of 0.3) so it arrives snappier and brakes harder, like teleop
+        power = Math.max(-0.55, Math.min(0.55, power));
+        double minPower = 0.22; // Boosted minimum power to punch through internal friction so it doesn't get stuck and then snap
+
         if (Math.abs(error) > PositionToleranceDeg) {
-            spindexer.setPower(power * voltageComp);
+            double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
+            spindexer.setPower(finalPower * voltageComp);
+            spindexerSettleCounter = 0;
         } else {
             spindexer.setPower(0);
+            spindexerSettleCounter++;
         }
 
     }
@@ -1327,25 +1346,22 @@ public class PenguinosAuto extends OpMode {
         double power = (error * kP) + (derivative * kD);
         intakeLastError = error;
 
-        // Cap the power so it doesn't go crazy
-        power = Math.max(-0.3, Math.min(0.3, power));
-        double minPower = 0.15; // Minimum power to overcome friction
+        // Cap the power so it doesn't go crazy, but allow enough to be snappy
+        power = Math.max(-0.55, Math.min(0.55, power));
+        double minPower = 0.22; // Boosted minimum power to punch through internal friction so it doesn't get stuck and then snap
 
         if (Math.abs(error) > PositionToleranceDeg) {
             double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
             spindexer.setPower(finalPower * voltageComp);
+            spindexerSettleCounter = 0;
         } else {
             spindexer.setPower(0);
+            spindexerSettleCounter++;
         }
     }
 
     boolean spindexerAtTarget(double target) {
-        double error = target - getSpindexerAngleDeg();
-
-        while (error > 180) error -= 360;
-        while (error <= -180) error += 360;
-
-        return Math.abs(error) < PositionToleranceDeg;
+        return spindexerSettleCounter >= 3;
     }
 
 }

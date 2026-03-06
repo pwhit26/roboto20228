@@ -23,6 +23,7 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
+import org.firstinspires.ftc.teamcode.PoseStorage;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.TurretMath;
 
@@ -144,7 +145,7 @@ public class lavaTele extends LinearOpMode {
 
     Servo angleTurret0, angleTurret1, popUp;
     DcMotorEx turret, intake, frontRight, frontLeft, backRight, backLeft, spindexer, turnTurret;
-    boolean xLast, bLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable;
+    boolean xLast, bLast, bPressable, yPressable, aLast, aPressable, rbumpLast, rbumpPressable, b1Last, b1Pressable, x1Last, x1Pressable, UbumpLast, DbumpLast;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -208,9 +209,9 @@ public class lavaTele extends LinearOpMode {
         popUp = hardwareMap.get(Servo.class, "popup");
         popUp.setPosition(0);
         angleTurret0 = hardwareMap.get(Servo.class, "angleTurret0");
-        angleTurret0.setPosition(0.11);
+        //angleTurret0.setPosition(0.11);
         angleTurret1 = hardwareMap.get(Servo.class, "angleTurret1");
-        angleTurret1.setPosition(0.89);
+        //angleTurret1.setPosition(0.89);
 
         if (limelight != null) {
             limelight.pipelineSwitch(1);  // Changed to pipeline 0 for AprilTag
@@ -219,7 +220,7 @@ public class lavaTele extends LinearOpMode {
         } else {
             telemetry.addData("Limelight", "Not found in hardware map!");
         }
-        while (!isStarted() && !isStopRequested())
+        /*while (!isStarted() && !isStopRequested())
         {
             if (gamepad1.dpad_left) {
                 lastPose = new Pose(-72, -24, Math.toRadians(0));
@@ -231,11 +232,11 @@ public class lavaTele extends LinearOpMode {
             else {
                 lastPose = new Pose(-72, -24, Math.toRadians(0));
             }
-        }
-        follower.setStartingPose(lastPose);
-        telemetry.addData("Robot X", lastPose.getX());
-        telemetry.addData("Robot Y", lastPose.getY());
-        telemetry.addData("TurretCmd", lastPose.getHeading());
+        }*/
+        follower.setStartingPose(PoseStorage.lastPose);
+        telemetry.addData("Robot X", PoseStorage.lastPose.getX());
+        telemetry.addData("Robot Y", PoseStorage.lastPose.getY());
+        telemetry.addData("TurretCmd", PoseStorage.lastPose.getHeading());
         telemetry.update();
 
         waitForStart();
@@ -392,12 +393,13 @@ public class lavaTele extends LinearOpMode {
                         if (gamepad1.b) {
                             turret.setVelocity(1700);
                         } else {
-                            turret.setVelocity(800);
+                            turret.setVelocity(900);
                         }
                     }
 
 
                 }
+
             }
 
 
@@ -640,7 +642,7 @@ public class lavaTele extends LinearOpMode {
                                 sequenceStartTime = System.currentTimeMillis();
                             } else {
                                 spindexer.setPower(0);
-                                if (stepTime >= 5) { // Wait for settle
+                                if (stepTime >= 20) { // Wait for motor to physically stop coasting before popup fires
                                     shootStep = 2;
                                     sequenceStartTime = System.currentTimeMillis();
                                     emptySlotCounter = 0;
@@ -772,39 +774,97 @@ public class lavaTele extends LinearOpMode {
 
     private void setTurretAngle(double dist)
     {
+        double pos0;
+        double pos1;
         if (dist>=2.9)
         {
-            angleTurret0.setPosition(0.01);
-            angleTurret1.setPosition(0.99);
+            pos0 = 0.01;
+            pos1 = 0.99;
+            //angleTurret0.setPosition(0.01);
+            //angleTurret1.setPosition(0.99);
         }
         else if (dist>2.2)
         {
-            angleTurret0.setPosition(0.02);
-            angleTurret1.setPosition(0.98);
+            pos0 = 0.02;
+            pos1 = 0.98;
+            //angleTurret0.setPosition(0.02);
+            //angleTurret1.setPosition(0.98);
         }
         else if (dist>1.5)
         {
-            angleTurret0.setPosition(0.05);
-            angleTurret1.setPosition(0.95);
+            pos0 = 0.05;
+            pos1 = 0.95;
+            //angleTurret0.setPosition(0.05);
+            //angleTurret1.setPosition(0.95);
         }
         else if (dist>1)
         {
-            angleTurret0.setPosition(0.07);
-            angleTurret1.setPosition(0.93);
+            pos0 = 0.07;
+            pos1 = 0.93;
+            //angleTurret0.setPosition(0.07);
+            //angleTurret1.setPosition(0.93);
         }
         else if (dist>0.75)
         {
-            angleTurret0.setPosition(0.1);
-            angleTurret1.setPosition(0.9);
+            pos0 = 0.1;
+            pos1 = 0.9;
+            //angleTurret0.setPosition(0.1);
+            //angleTurret1.setPosition(0.9);
         }
         else if (dist<=0.75){
-            angleTurret0.setPosition(0.12);
-            angleTurret1.setPosition(0.88);
+            pos0 = 0.12;
+            pos1 = 0.88;
+            //angleTurret0.setPosition(0.12);
+            //angleTurret1.setPosition(0.88);
         }
         else {
-            angleTurret0.setPosition(0.03);
-            angleTurret1.setPosition(0.97);
+            pos0 = 0.03;
+            pos1 = 0.97;
+            //angleTurret0.setPosition(0.03);
+            //angleTurret1.setPosition(0.97);
         }
+
+        angleTurret0.setPosition(pos0);
+        angleTurret1.setPosition(pos1);
+
+    }
+    private void helpLimelightDoesntWorkAngle()
+    {
+        double pos0 = angleTurret0.getPosition();
+        double pos1 = angleTurret1.getPosition();
+        if (gamepad1.dpad_up && !UbumpLast)
+        {
+            pos0 = pos0 + 0.01;
+            pos1 = pos1 - 0.01;
+        }
+        UbumpLast = gamepad1.dpad_up;
+        if (gamepad1.dpad_down && DbumpLast)
+        {
+            pos0 = pos0 - 0.01;
+            pos1 = pos0 + 0.01;
+        }
+        DbumpLast = gamepad1.dpad_down;
+        angleTurret0.setPosition(pos0);
+        angleTurret1.setPosition(pos1);
+    }
+    private void helpLimelightDoesntWorkVelocity()
+    {
+        double velocity = 1400;
+        if (gamepad1.dpad_up && !UbumpLast)
+        {
+            velocity = velocity + 30;
+        }
+        UbumpLast = gamepad1.dpad_up;
+        if (gamepad1.dpad_down && DbumpLast)
+        {
+            velocity = velocity - 30;
+        }
+        DbumpLast = gamepad1.dpad_down;
+
+        turret.setVelocity(velocity);
+        telemetry.addData("Target velocity", (int)Math.round(velocity));
+        telemetry.addData("Real velocity: ", (int)turret.getVelocity());
+        telemetry.update();
     }
 
     private void setTurretVelocity(double dist)
@@ -816,42 +876,18 @@ public class lavaTele extends LinearOpMode {
         double velocity = (69.80877)*(dist)*(dist) + (17.851)*(dist) + 1141.445;
         if (dist<=2.4)
         {
-            velocity = velocity + 170;
+            velocity = velocity + 140;
         }
         if (dist>2 && dist < 2.8)
         {
             velocity = velocity + 40;
         }
-        /*if (dist<=1.2)
+        if (dist>=2.8)
         {
-            velocity = velocity +35;
-        }
-        if (dist >1.2 && dist <1.5)
-        {
-            velocity = velocity + 20;
+            velocity = velocity - 10;
         }
 
-        if (dist >=1.5 && dist <= 1.8)
-        {
-            velocity = velocity - 20;
-        }
-        if (dist > 1.8 && dist < 2.2)
-        {
-            velocity = velocity -50;
-        }
-        if (dist >=2.2 && dist<2.9)
-        {
-            velocity = velocity + 5;
-        }
-        if (dist>3)
-        {
-            velocity = velocity - 5;
-        }
 
-        if (gamepad1.right_bumper)
-        {
-            velocity = velocity + 75;
-        }*/
 
 
 
