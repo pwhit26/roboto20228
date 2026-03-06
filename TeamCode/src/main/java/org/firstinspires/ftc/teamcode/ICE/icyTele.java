@@ -381,7 +381,7 @@ public class icyTele extends LinearOpMode {
                         if (gamepad1.b) {
                             setTurretVelocity(dist); //not sure if i didnt fuck this up sorry
                         } else {
-                            turret.setVelocity(800);
+                            turret.setVelocity(950);
                         }
 
                         telemetry.addData("LL Valid", isValid);
@@ -391,7 +391,7 @@ public class icyTele extends LinearOpMode {
                     } else {
                         limelightCorrectionRad *= 0.75;
                         if (gamepad1.b) {
-                            turret.setVelocity(1500);
+                            turret.setVelocity(1700);
                         } else {
                             turret.setVelocity(800);
                         }
@@ -815,6 +815,14 @@ public class icyTele extends LinearOpMode {
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
         double velocity = (69.80877)*(dist)*(dist) + (17.851)*(dist) + 1141.445;
+        if (dist<=2.4)
+        {
+            velocity = velocity + 150;
+        }
+        if (dist>2 && dist < 2.8)
+        {
+            velocity = velocity + 40;
+        }
         /*if (dist<=1.2)
         {
             velocity = velocity +35;
@@ -1231,9 +1239,10 @@ public class icyTele extends LinearOpMode {
                     // Only apply if this is our blue goal tag
                     if (tagId == 20) {
                         correctTagSeen = true;
-                        double txRad = Math.toRadians(ll.getTx());
-
-
+                        
+                        // User reported Limelight is physically mounted slightly off, causing it to aim 2 degrees too far right.
+                        // We subtract 2 degrees here to force it to aim further left.
+                        double txRad = Math.toRadians(ll.getTx() - 2.0);
                         // Smoothly nudge zero offset
                         double correctionSpeed = 0.05; // smaller = smoother
                         turretZeroOffsetDeg -= Math.toDegrees(txRad) * correctionSpeed;

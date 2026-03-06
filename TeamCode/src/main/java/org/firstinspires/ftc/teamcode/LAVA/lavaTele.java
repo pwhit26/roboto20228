@@ -380,7 +380,7 @@ public class lavaTele extends LinearOpMode {
                         if (gamepad1.b) {
                             setTurretVelocity(dist); //not sure if i didnt fuck this up sorry
                         } else {
-                            turret.setVelocity(800);
+                            turret.setVelocity(950);
                         }
 
                         telemetry.addData("LL Valid", isValid);
@@ -390,7 +390,7 @@ public class lavaTele extends LinearOpMode {
                     } else {
                         limelightCorrectionRad *= 0.75;
                         if (gamepad1.b) {
-                            turret.setVelocity(1500);
+                            turret.setVelocity(1700);
                         } else {
                             turret.setVelocity(800);
                         }
@@ -814,6 +814,14 @@ public class lavaTele extends LinearOpMode {
 
         //double velocity = (-58.21*(dist*dist)) + (550.8*dist) + 820; OLD EQUATION
         double velocity = (69.80877)*(dist)*(dist) + (17.851)*(dist) + 1141.445;
+        if (dist<=2.4)
+        {
+            velocity = velocity + 170;
+        }
+        if (dist>2 && dist < 2.8)
+        {
+            velocity = velocity + 40;
+        }
         /*if (dist<=1.2)
         {
             velocity = velocity +35;

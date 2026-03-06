@@ -28,8 +28,8 @@ import java.util.List;
 @Autonomous
 public class SpinOnUrOwn extends OpMode {
     private Follower follower;
-    private Pose start, shoot, shoot2, preScoop1, scoop1, farShoot, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain, jiggle, scoop4, scoop5;
-    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3, postJiggle, intake4, intake5;
+    private Pose start, shoot, shoot2, preScoop1, scoop1, farShoot, preScoop2, scoop2, preScoop3, scoop3, parky, shootAgain, jiggle, scoop4, scoop5, preScoop4, preScoop5;
+    private PathChain startShoot, shootPre1, preSco1,sco1Sho,shootPre2, park, preSco2,sco2Sho, intake2, intake3, postJiggle, intake4, intake5, preSco3, preSco4, preSco5;
     String pathState="";
     long startTime = 0;
     int pathStage = 0; // 0 = not started, 1 = first path, 2 = second path, 3 = done
@@ -57,12 +57,13 @@ public class SpinOnUrOwn extends OpMode {
     static final int numIntakeSlots = 3;
     int[] intakeSlotPositions = {110, 230, 355};
     int[] shootSlotPositions = {65, 190, 305};
-    static final double kP = 0.0155; // Start small
+    static final double kP = 0.018; // Start small
     static final double kD = 0.0008; // Helps prevent overshoot
     static final double kI = 0.0;    // Usually not needed for a spindexer
     double lastError = 0;
     ElapsedTime pidTimer = new ElapsedTime();
-    double PositionToleranceDeg = 10;
+    double PositionToleranceDeg = 4.5;
+    int spindexerSettleCounter = 0;
     static final double max_spin_power = 0.5;
     double integral = 0;
     int currentSlot = 0;
@@ -146,10 +147,15 @@ public class SpinOnUrOwn extends OpMode {
         farShoot = new Pose(-58, 12, Math.toRadians(24));
         preScoop1 = new Pose(-32, 34, Math.toRadians(90));
         scoop1 = new Pose(-32,43, Math.toRadians(90));
-        scoop2 = new Pose(-29, 50, Math.toRadians(90));
+        scoop2 = new Pose(-29, 49, Math.toRadians(90));
         scoop3 = new Pose(-32, 68, Math.toRadians(90));
         scoop4 = new Pose(-29, 66, Math.toRadians(90));
         scoop5 = new Pose (-28, 68.5, Math.toRadians(90));
+        preScoop2 = new Pose (-52, 67, Math.toRadians(90));
+        preScoop3 = new Pose (-52, 65, Math.toRadians(120));
+        preScoop4 = new Pose (-53, 66, Math.toRadians(130));
+        preScoop5 = new Pose (-48, 64, Math.toRadians(160));
+
 
 
 
@@ -191,6 +197,22 @@ public class SpinOnUrOwn extends OpMode {
         sco1Sho = follower.pathBuilder()
                 .addPath(new BezierLine(scoop5, farShoot))
                 .setLinearHeadingInterpolation(scoop5.getHeading(), farShoot.getHeading())
+                .build();
+        preSco2 = follower.pathBuilder()
+                .addPath(new BezierLine(farShoot, preScoop2))
+                .setLinearHeadingInterpolation(farShoot.getHeading(), preScoop2.getHeading())
+                .build();
+        preSco3 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop2, preScoop3))
+                .setLinearHeadingInterpolation(preScoop2.getHeading(), preScoop3.getHeading())
+                .build();
+        preSco4 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop3, preScoop4))
+                .setLinearHeadingInterpolation(preScoop3.getHeading(), preScoop4.getHeading())
+                .build();
+        preSco5 = follower.pathBuilder()
+                .addPath(new BezierLine(preScoop4, preScoop5))
+                .setLinearHeadingInterpolation(preScoop4.getHeading(), preScoop5.getHeading())
                 .build();
 
 
@@ -331,7 +353,7 @@ public class SpinOnUrOwn extends OpMode {
                 break;*/
 
             case 0:
-                turret.setVelocity(1950); //ball 1
+                turret.setVelocity(1530); //ball 1
                 if (!follower.isBusy()) {   // ensures it only starts once
                     follower.followPath(startShoot);
                     pathStage = 1;
@@ -345,8 +367,8 @@ public class SpinOnUrOwn extends OpMode {
                 angleTurret0.setPosition(0.005);
                 angleTurret1.setPosition(0.995);
                 // follower.followPath(startShoot);
-                turret.setVelocity(1950); //ball 1
-                if (elapsedTime >= 2300) {
+                turret.setVelocity(1530); //ball 1
+                if (elapsedTime >= 2000) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -382,7 +404,7 @@ public class SpinOnUrOwn extends OpMode {
 
 
             case 5: //pop up shoot
-                turret.setVelocity(1950); //ball 1
+                turret.setVelocity(1530); //ball 1
                 if (elapsedTime>=900)
                 {
                     angleTurret0.setPosition(0.015);
@@ -397,7 +419,7 @@ public class SpinOnUrOwn extends OpMode {
 
             case 6: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1670); //ball 2
+                turret.setVelocity(1560); //ball 2
                 if (elapsedTime >= 300) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -429,7 +451,7 @@ public class SpinOnUrOwn extends OpMode {
 
             case 9: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1655); //ball 3
+                turret.setVelocity(1560); //ball 3
                 if (elapsedTime >= 300) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -471,7 +493,7 @@ public class SpinOnUrOwn extends OpMode {
             case 13:
                 if (!follower.isBusy()) {
                     follower.followPath(shootPre1);
-                    turret.setVelocity(1000);
+                    turret.setVelocity(800);
                 }
                 if (elapsedTime >= 500) {
                     pathStage++;
@@ -586,7 +608,7 @@ public class SpinOnUrOwn extends OpMode {
                 }
                 if (elapsedTime>=1100) //1850
                 {
-                    turret.setVelocity(800);
+                    turret.setVelocity(1500);
                     intake.setPower(0);
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -596,7 +618,7 @@ public class SpinOnUrOwn extends OpMode {
 
 
             case 23: //little baby first move
-                turret.setVelocity(1550); //ball 4
+                turret.setVelocity(1750); //ball 4
                 angleTurret0.setPosition(0.005);
                 angleTurret1.setPosition(0.995);
                 // follower.followPath(startShoot);
@@ -610,7 +632,7 @@ public class SpinOnUrOwn extends OpMode {
             case 24:
                 if (!follower.isBusy()) {   // ensures it only starts once
                     follower.followPath(sco1Sho);
-                    pathStage = 1;
+                    pathStage++;
                 }
                 break;
 
@@ -624,7 +646,7 @@ public class SpinOnUrOwn extends OpMode {
                     telemetry.addData("position", "slot 0 - " + getSpindexerAngleDeg());
 
                 }
-                if (elapsedTime>=400)
+                if (!follower.isBusy())
                 {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -649,7 +671,7 @@ public class SpinOnUrOwn extends OpMode {
 
             case 27: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1575); //ball 5
+                turret.setVelocity(1630); //ball 5
                 if (elapsedTime >= 300) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -681,7 +703,7 @@ public class SpinOnUrOwn extends OpMode {
 
             case 30: //pop up down
                 popUp.setPosition(0);
-                turret.setVelocity(1800); //ball 6
+                turret.setVelocity(1720); //ball 6
                 if (elapsedTime >= 300) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
@@ -718,7 +740,6 @@ public class SpinOnUrOwn extends OpMode {
                 break;
 
             case 34:
-                //   follower.followPath(shootPre1);
                 //spindexer.setPower(0.6);
                 intakeAlign(2);
                 if (spindexerAtTarget(intakeSlotPositions[2]))
@@ -728,7 +749,7 @@ public class SpinOnUrOwn extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 600) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -737,35 +758,24 @@ public class SpinOnUrOwn extends OpMode {
                 break;
             case 35:
                 if (!follower.isBusy()) {
-                    pathStage++;
+                    intake.setPower(0.8);
+                    follower.followPath(preSco2);
+                    pathStage = 37;
                     startTime = System.currentTimeMillis();
                 }
                 break;
-            case 36:
-
-                // Start the path
-                intake.setPower(0.8);
-
-                pathStage++;
-                startTime = System.currentTimeMillis();
-                break;
             case 37:
-
-
                 //elapsedTime = System.currentTimeMillis() - startTime;
 
                 // ---- MECHANISM TIMING (always runs) ----
                 if (elapsedTime >= 1200) { //1450
-                    intake.setPower(0);
+                    intake.setPower(0.2);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
                 break;
             case 38:
-                if (!intake.isBusy())
-                {
-                    intakeAlign(0);
-                }
+                intakeAlign(0);
                 if (spindexerAtTarget(intakeSlotPositions[0]))
                 {
 
@@ -773,7 +783,7 @@ public class SpinOnUrOwn extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (elapsedTime >= 600) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -781,7 +791,7 @@ public class SpinOnUrOwn extends OpMode {
             case 39:
                 if (!follower.isBusy()) {
                     intake.setPower(0.8);
-                    //   follower.followPath(intake2);
+                    follower.followPath(preSco3);
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -805,7 +815,7 @@ public class SpinOnUrOwn extends OpMode {
 
                 }
                 //intake.setPower(0);
-                if (elapsedTime >= 800) {
+                if (!follower.isBusy()) {
                     pathStage++;
                     startTime = System.currentTimeMillis();
                 }
@@ -813,7 +823,7 @@ public class SpinOnUrOwn extends OpMode {
             case 42:
                 if (!follower.isBusy()) {
                     intake.setPower(0.8);
-                    //    follower.followPath(intake3);
+                    follower.followPath(preSco4);
                 }
                 if (elapsedTime>=1000) //1850
                 {
@@ -843,12 +853,15 @@ public class SpinOnUrOwn extends OpMode {
 
 
             case 44: //pop up shoot
-                angleTurret0.setPosition(0.015);
-                angleTurret1.setPosition(0.985);
-                popUp.setPosition(0.4);
-                if (elapsedTime >= 300) {
-                    pathStage++;
-                    startTime = System.currentTimeMillis();
+                if (!follower.isBusy())
+                {
+                    angleTurret0.setPosition(0.015);
+                    angleTurret1.setPosition(0.985);
+                    popUp.setPosition(0.4);
+                    if (elapsedTime >= 300) {
+                        pathStage++;
+                        startTime = System.currentTimeMillis();
+                    }
                 }
                 break;
 
@@ -1294,11 +1307,17 @@ public class SpinOnUrOwn extends OpMode {
         double power = (error * kP) + (derivative * kD);
         shootLastError = error;
 
-        power = Math.max(-0.3, Math.min(0.3, power));
+        // Give it more max power (0.55 instead of 0.3) so it arrives snappier and brakes harder, like teleop
+        power = Math.max(-0.55, Math.min(0.55, power));
+        double minPower = 0.22; // Boosted minimum power to punch through internal friction so it doesn't get stuck and then snap
+
         if (Math.abs(error) > PositionToleranceDeg) {
-            spindexer.setPower(power * voltageComp);
+            double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
+            spindexer.setPower(finalPower * voltageComp);
+            spindexerSettleCounter = 0;
         } else {
             spindexer.setPower(0);
+            spindexerSettleCounter++;
         }
 
     }
@@ -1327,25 +1346,22 @@ public class SpinOnUrOwn extends OpMode {
         double power = (error * kP) + (derivative * kD);
         intakeLastError = error;
 
-        // Cap the power so it doesn't go crazy
-        power = Math.max(-0.3, Math.min(0.3, power));
-        double minPower = 0.15; // Minimum power to overcome friction
+        // Cap the power so it doesn't go crazy, but allow enough to be snappy
+        power = Math.max(-0.55, Math.min(0.55, power));
+        double minPower = 0.22; // Boosted minimum power to punch through internal friction so it doesn't get stuck and then snap
 
         if (Math.abs(error) > PositionToleranceDeg) {
             double finalPower = Math.max(Math.abs(power), minPower) * Math.signum(power);
             spindexer.setPower(finalPower * voltageComp);
+            spindexerSettleCounter = 0;
         } else {
             spindexer.setPower(0);
+            spindexerSettleCounter++;
         }
     }
 
     boolean spindexerAtTarget(double target) {
-        double error = target - getSpindexerAngleDeg();
-        
-        while (error > 180) error -= 360;
-        while (error <= -180) error += 360;
-        
-        return Math.abs(error) < PositionToleranceDeg;
+        return spindexerSettleCounter >= 3;
     }
 
 }
